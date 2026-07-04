@@ -12,6 +12,7 @@ interface EnvConfig {
   port: number;
   jwtSecret: string;
   jwtExpiresIn: string;
+  databaseUrl: string;
   mongoUri: string;
   redisUrl: string;
   groqApiKey: string;
@@ -31,6 +32,7 @@ export const env: EnvConfig = {
   port: Number(process.env.PORT ?? 4000),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+  databaseUrl: required('DATABASE_URL'),
   mongoUri: required('MONGO_URI'),
   redisUrl: required('REDIS_URL'),
   // Optional for now — the LLM synthesis step is a later phase.

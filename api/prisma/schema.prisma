@@ -1,0 +1,60 @@
+// Prisma schema for North's relational data: users, trips, and trip membership.
+
+generator client {
+  provider = "prisma-client-js"
+  // The Alpine (musl) image needs an explicit musl engine target since
+  // "native" alone doesn't cover it. Both variants are listed because the
+  // build host's CPU architecture varies (arm64 on Apple Silicon, x64
+  // elsewhere/in CI) and Prisma's auto-detection fell back to an
+  // incompatible openssl-1.1.x engine when only the x64 target was listed.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  tripsCreated Trip[]       @relation("TripCreator")
+  memberships  TripMember[]
+}
+
+model Trip {
+  id         String    @id @default(uuid())
+  name       String
+  createdBy  String
+  inviteCode String    @unique
+  status     String    @default("planning")
+  startDate  DateTime?
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+
+  creator    User         @relation("TripCreator", fields: [createdBy], references: [id])
+  members    TripMember[]
+}
+
+enum TripRole {
+  owner
+  member
+}
+
+model TripMember {
+  id       String   @id @default(uuid())
+  tripId   String
+  userId   String
+  role     TripRole @default(member)
+  joinedAt DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  // A user can only join a given trip once.
+  @@unique([tripId, userId])
+}

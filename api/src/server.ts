@@ -1,10 +1,11 @@
 import { createApp } from './app';
 import { env } from './config/env';
+import { connectPostgres, disconnectPostgres } from './db/postgres';
 import { connectMongo, disconnectMongo } from './db/mongo';
 import { connectRedis, disconnectRedis } from './db/redis';
 
 async function main(): Promise<void> {
-  await Promise.all([connectMongo(), connectRedis()]);
+  await Promise.all([connectPostgres(), connectMongo(), connectRedis()]);
 
   const app = createApp();
   const server = app.listen(env.port, () => {
@@ -14,7 +15,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     console.log(`[server] received ${signal}, shutting down`);
     server.close();
-    await Promise.all([disconnectMongo(), disconnectRedis()]);
+    await Promise.all([disconnectPostgres(), disconnectMongo(), disconnectRedis()]);
     process.exit(0);
   };
 

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { prisma } from '../db/postgres';
 import { redisClient } from '../db/redis';
 
 const router = Router();
@@ -8,12 +9,18 @@ const router = Router();
 // dependency shows up clearly in the response instead of the whole request
 // throwing. This is the fastest way to confirm docker-compose wired every
 // service together correctly.
-// Postgres isn't wired up yet — it comes back in Phase 3 with Prisma.
 router.get('/', async (_req: Request, res: Response) => {
-  const status: Record<'mongo' | 'redis', 'ok' | 'error'> = {
+  const status: Record<'postgres' | 'mongo' | 'redis', 'ok' | 'error'> = {
+    postgres: 'ok',
     mongo: 'ok',
     redis: 'ok',
   };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    status.postgres = 'error';
+  }
 
   try {
     if (mongoose.connection.readyState !== 1) throw new Error('not connected');
