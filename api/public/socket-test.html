@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>North — Socket.io manual test page</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 18px; }
+  section { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+  h2 { font-size: 14px; margin: 0 0 8px; }
+  label { display: block; font-size: 12px; margin-top: 6px; color: #555; }
+  input { width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 13px; }
+  button { margin-top: 8px; margin-right: 6px; padding: 5px 10px; font-size: 13px; cursor: pointer; }
+  #status { font-weight: bold; }
+  #status.connected { color: #16a34a; }
+  #status.disconnected { color: #dc2626; }
+  #log { background: #111; color: #ddd; font-family: monospace; font-size: 12px; padding: 8px; height: 260px; overflow-y: auto; border-radius: 4px; white-space: pre-wrap; }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+</style>
+</head>
+<body>
+  <h1>North — Socket.io manual test page</h1>
+  <p>Open this page in two tabs, authenticate as two different users, join the same trip in both, and confirm each tab sees the other's events in its log.</p>
+
+  <section>
+    <h2>1. Auth (calls the existing REST API)</h2>
+    <div class="row">
+      <div>
+        <label>Email</label>
+        <input id="email" value="alice@example.com" />
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="password" type="password" value="password123" />
+      </div>
+      <div>
+        <label>Name (register only)</label>
+        <input id="name" value="Alice" />
+      </div>
+    </div>
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+    <label>Token</label>
+    <input id="token" />
+  </section>
+
+  <section>
+    <h2>2. Trip setup (REST)</h2>
+    <div class="row">
+      <div>
+        <label>Trip name (create)</label>
+        <input id="tripName" value="Japan 2026" />
+      </div>
+      <div>
+        <label>Invite code (join)</label>
+        <input id="inviteCode" />
+      </div>
+    </div>
+    <button onclick="createTrip()">Create trip</button>
+    <button onclick="joinTripRest()">Join trip (invite code)</button>
+    <label>Trip ID</label>
+    <input id="tripId" />
+  </section>
+
+  <section>
+    <h2>3. Socket connection</h2>
+    <span id="status" class="disconnected">disconnected</span><br />
+    <button onclick="connectSocket()">Connect</button>
+    <button onclick="disconnectSocket()">Disconnect</button>
+    <button onclick="joinTripRoom()">join_trip</button>
+    <button onclick="leaveTripRoom()">leave_trip</button>
+  </section>
+
+  <section>
+    <h2>4. Preference update</h2>
+    <label>Destinations (comma separated)</label>
+    <input id="destinations" value="Tokyo,Kyoto" />
+    <label>Budget per day</label>
+    <input id="budgetPerDay" type="number" value="150" />
+    <button onclick="sendPreferenceUpdate()">preference_update</button>
+  </section>
+
+  <section>
+    <h2>5. Voting</h2>
+    <label>Destination</label>
+    <input id="voteDestination" value="Tokyo" />
+    <button onclick="castVote()">vote_cast</button>
+  </section>
+
+  <section>
+    <h2>6. Cursor / presence</h2>
+    <label>Field being edited</label>
+    <input id="cursorField" value="budgetPerDay" />
+    <button onclick="sendCursorUpdate()">cursor_update</button>
+  </section>
+
+  <section>
+    <h2>Event log</h2>
+    <div id="log"></div>
+  </section>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket = null;
+
+    function log(label, payload) {
+      const el = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      el.textContent += `[${time}] ${label} ${payload !== undefined ? JSON.stringify(payload) : ''}\n`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function register() {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+          name: document.getElementById('name').value,
+        }),
+      });
+      const data = await res.json();
+      log('register ->', data);
+      if (data.token) document.getElementById('token').value = data.token;
+    }
+
+    async function login() {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+        }),
+      });
+      const data = await res.json();
+      log('login ->', data);
+      if (data.token) document.getElementById('token').value = data.token;
+    }
+
+    async function createTrip() {
+      const res = await fetch('/api/trips', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${document.getElementById('token').value}`,
+        },
+        body: JSON.stringify({ name: document.getElementById('tripName').value }),
+      });
+      const data = await res.json();
+      log('createTrip ->', data);
+      if (data.id) {
+        document.getElementById('tripId').value = data.id;
+        document.getElementById('inviteCode').value = data.inviteCode;
+      }
+    }
+
+    async function joinTripRest() {
+      const tripId = document.getElementById('tripId').value;
+      const res = await fetch(`/api/trips/${tripId}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${document.getElementById('token').value}`,
+        },
+        body: JSON.stringify({ inviteCode: document.getElementById('inviteCode').value }),
+      });
+      const data = await res.json();
+      log('joinTripRest ->', data);
+    }
+
+    function connectSocket() {
+      if (socket) socket.disconnect();
+
+      socket = io({ auth: { token: document.getElementById('token').value } });
+
+      socket.on('connect', () => {
+        document.getElementById('status').textContent = 'connected';
+        document.getElementById('status').className = 'connected';
+        log('connect', { id: socket.id });
+      });
+      socket.on('disconnect', () => {
+        document.getElementById('status').textContent = 'disconnected';
+        document.getElementById('status').className = 'disconnected';
+        log('disconnect');
+      });
+      socket.on('connect_error', (err) => log('connect_error', { message: err.message }));
+
+      socket.on('presence_state', (p) => log('presence_state', p));
+      socket.on('user_joined', (p) => log('user_joined', p));
+      socket.on('user_left', (p) => log('user_left', p));
+      socket.on('preference_broadcast', (p) => log('preference_broadcast', p));
+      socket.on('vote_tally_update', (p) => log('vote_tally_update', p));
+      socket.on('cursor_broadcast', (p) => log('cursor_broadcast', p));
+      socket.on('error_message', (p) => log('error_message', p));
+    }
+
+    function disconnectSocket() {
+      socket?.disconnect();
+    }
+
+    function joinTripRoom() {
+      socket?.emit('join_trip', { tripId: document.getElementById('tripId').value });
+    }
+
+    function leaveTripRoom() {
+      socket?.emit('leave_trip', { tripId: document.getElementById('tripId').value });
+    }
+
+    function sendPreferenceUpdate() {
+      socket?.emit('preference_update', {
+        tripId: document.getElementById('tripId').value,
+        destinations: document.getElementById('destinations').value.split(',').map((s) => s.trim()).filter(Boolean),
+        budgetPerDay: Number(document.getElementById('budgetPerDay').value),
+      });
+    }
+
+    function castVote() {
+      socket?.emit('vote_cast', {
+        tripId: document.getElementById('tripId').value,
+        destination: document.getElementById('voteDestination').value,
+      });
+    }
+
+    function sendCursorUpdate() {
+      socket?.emit('cursor_update', {
+        tripId: document.getElementById('tripId').value,
+        field: document.getElementById('cursorField').value,
+      });
+    }
+  </script>
+</body>
+</html>

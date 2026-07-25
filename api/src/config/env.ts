@@ -15,6 +15,7 @@ interface EnvConfig {
   databaseUrl: string;
   mongoUri: string;
   redisUrl: string;
+  corsOrigin: string;
   groqApiKey: string;
   groqModel: string;
 }
@@ -35,6 +36,7 @@ export const env: EnvConfig = {
   databaseUrl: required('DATABASE_URL'),
   mongoUri: required('MONGO_URI'),
   redisUrl: required('REDIS_URL'),
+  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   // Optional for now — the LLM synthesis step is a later phase.
   groqApiKey: process.env.GROQ_API_KEY ?? '',
   groqModel: process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant',

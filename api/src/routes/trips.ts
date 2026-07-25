@@ -1,6 +1,15 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { create, getById, join, listMine } from '../controllers/tripController';
+import {
+  create,
+  getById,
+  join,
+  listMine,
+  synthesize,
+  getPreferences,
+  getVotes,
+  getItinerary,
+} from '../controllers/tripController';
 
 const router = Router();
 
@@ -10,5 +19,9 @@ router.post('/', create);
 router.get('/', listMine);
 router.get('/:id', getById);
 router.post('/:id/join', join);
+router.get('/:id/preferences', getPreferences);
+router.get('/:id/votes', getVotes);
+router.get('/:id/itinerary', getItinerary);
+router.post('/:id/synthesize', synthesize);
 
 export default router;

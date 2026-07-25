@@ -3,6 +3,7 @@ import { env } from './config/env';
 import { connectPostgres, disconnectPostgres } from './db/postgres';
 import { connectMongo, disconnectMongo } from './db/mongo';
 import { connectRedis, disconnectRedis } from './db/redis';
+import { initializeSocket } from './socket';
 
 async function main(): Promise<void> {
   await Promise.all([connectPostgres(), connectMongo(), connectRedis()]);
@@ -11,6 +12,13 @@ async function main(): Promise<void> {
   const server = app.listen(env.port, () => {
     console.log(`[server] listening on port ${env.port}`);
   });
+
+  // Socket.io attaches to the same underlying http.Server as Express —
+  // one process, one port, HTTP and WebSocket traffic share it.
+  const io = initializeSocket(server);
+  // Lets REST controllers (e.g. the manual /synthesize trigger) reach the
+  // socket server to broadcast, via req.app.get('io').
+  app.set('io', io);
 
   const shutdown = async (signal: string): Promise<void> => {
     console.log(`[server] received ${signal}, shutting down`);

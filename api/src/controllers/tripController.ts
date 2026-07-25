@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { createTrip, getTripById, joinTrip, listUserTrips } from '../services/tripService';
+import { synthesizeItinerary, getLatestItinerary } from '../services/synthesisService';
+import { getTripPreferences } from '../services/preferenceService';
+import { computeVoteTallies } from '../services/voteService';
 import { HttpError } from '../utils/httpError';
+import { AppServer } from '../socket/types';
 
 function handleError(err: unknown, res: Response, fallbackMessage: string): void {
   if (err instanceof HttpError) {
@@ -58,5 +62,56 @@ export async function listMine(req: Request, res: Response): Promise<void> {
     res.status(200).json(trips);
   } catch (err) {
     handleError(err, res, 'Failed to list trips');
+  }
+}
+
+export async function getPreferences(req: Request, res: Response): Promise<void> {
+  try {
+    await getTripById(req.userId!, req.params.id);
+    const preferences = await getTripPreferences(req.params.id);
+    res.status(200).json(preferences);
+  } catch (err) {
+    handleError(err, res, 'Failed to fetch preferences');
+  }
+}
+
+export async function getVotes(req: Request, res: Response): Promise<void> {
+  try {
+    await getTripById(req.userId!, req.params.id);
+    const tallies = await computeVoteTallies(req.params.id);
+    res.status(200).json({ tallies });
+  } catch (err) {
+    handleError(err, res, 'Failed to fetch votes');
+  }
+}
+
+export async function getItinerary(req: Request, res: Response): Promise<void> {
+  try {
+    await getTripById(req.userId!, req.params.id);
+    const itinerary = await getLatestItinerary(req.params.id);
+    res.status(200).json(itinerary);
+  } catch (err) {
+    handleError(err, res, 'Failed to fetch itinerary');
+  }
+}
+
+export async function synthesize(req: Request, res: Response): Promise<void> {
+  const tripId = req.params.id;
+
+  try {
+    // Confirms membership (and that the trip exists) before spending an LLM call.
+    await getTripById(req.userId!, tripId);
+
+    const io = req.app.get('io') as AppServer | undefined;
+    // Emitted before the LLM call so every connected client (including ones
+    // that didn't trigger this request) can show a "synthesizing..." state.
+    io?.to(tripId).emit('synthesis_started', { tripId });
+
+    const itinerary = await synthesizeItinerary(tripId);
+    io?.to(tripId).emit('itinerary_updated', itinerary);
+
+    res.status(200).json(itinerary);
+  } catch (err) {
+    handleError(err, res, 'Failed to synthesize itinerary');
   }
 }
