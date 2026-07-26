@@ -36,6 +36,14 @@ sudo curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_V
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
+# Recent Compose releases require a buildx plugin new enough to support
+# `compose build`/`up --build` — AL2023's dnf docker package doesn't ship one
+# at all, so this installs it the same way as the compose plugin above.
+BUILDX_VERSION="$(curl -fsSL https://api.github.com/repos/docker/buildx/releases/latest | grep -m1 '"tag_name"' | cut -d '"' -f4)"
+sudo curl -fsSL "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
 echo "### Enabling and starting Docker ..."
 sudo systemctl enable --now docker
 

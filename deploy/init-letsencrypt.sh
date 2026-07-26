@@ -35,12 +35,17 @@ fi
 COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.production"
 
 echo "### Creating a dummy certificate for $DOMAIN so nginx can bind to :443 ..."
-$COMPOSE run --rm --entrypoint "\
+# --entrypoint takes a single program, not a shell command line — passing a
+# "cmd1 && cmd2" string directly (rather than via `sh -c`) silently drops
+# everything after the first command instead of erroring, which is a nasty
+# failure mode: it looks like it worked (the directory gets created) but the
+# certificate file never does.
+$COMPOSE run --rm --entrypoint sh certbot -c "\
   mkdir -p /etc/letsencrypt/live/$DOMAIN && \
   openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
     -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
     -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
-    -subj '/CN=localhost'" certbot
+    -subj '/CN=localhost'"
 
 echo "### Building and starting nginx (and its dependencies) ..."
 $COMPOSE up -d --build nginx

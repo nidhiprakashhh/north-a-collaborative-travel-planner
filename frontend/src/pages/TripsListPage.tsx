@@ -12,6 +12,8 @@ export function TripsListPage() {
   const joinTrip = useJoinTrip();
 
   const [newTripName, setNewTripName] = useState('');
+  const [newTripStartDate, setNewTripStartDate] = useState('');
+  const [newTripEndDate, setNewTripEndDate] = useState('');
   const [joinTripId, setJoinTripId] = useState('');
   const [joinInviteCode, setJoinInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +22,14 @@ export function TripsListPage() {
     e.preventDefault();
     setError(null);
     try {
-      const trip = await createTrip.mutateAsync({ name: newTripName });
+      const trip = await createTrip.mutateAsync({
+        name: newTripName,
+        startDate: newTripStartDate || undefined,
+        endDate: newTripEndDate || undefined,
+      });
       setNewTripName('');
+      setNewTripStartDate('');
+      setNewTripEndDate('');
       navigate(`/trips/${trip.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create trip');
@@ -65,6 +73,27 @@ export function TripsListPage() {
             onChange={(e) => setNewTripName(e.target.value)}
             required
           />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-slate-500">Start date</label>
+              <input
+                type="date"
+                className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                value={newTripStartDate}
+                onChange={(e) => setNewTripStartDate(e.target.value)}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-slate-500">End date</label>
+              <input
+                type="date"
+                className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                value={newTripEndDate}
+                min={newTripStartDate || undefined}
+                onChange={(e) => setNewTripEndDate(e.target.value)}
+              />
+            </div>
+          </div>
           <button
             type="submit"
             disabled={createTrip.isPending}
