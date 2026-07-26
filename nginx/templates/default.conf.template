@@ -1,0 +1,105 @@
+# This file is a *template*: the nginx:alpine image's built-in entrypoint
+# runs envsubst over every file in /etc/nginx/templates/*.template at
+# container start and writes the result into /etc/nginx/conf.d/, substituting
+# only variables that are actually set in the container's environment (never
+# nginx's own runtime vars like $request_uri) — so ${DOMAIN} below comes from
+# docker-compose.prod.yml's `environment:` block, sourced from .env.production.
+# No manual editing needed per deploy.
+
+# ---- plain HTTP: ACME challenge + redirect everything else to HTTPS ----
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---- HTTPS: serves the built frontend, proxies the API and Socket.io ----
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+    client_max_body_size 1m;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Docker's embedded DNS (127.0.0.11) is the only way to re-resolve "api"
+    # after its container is recreated (e.g. a deploy that rebuilds only the
+    # api image). A bare `proxy_pass http://api:4000` resolves once at nginx
+    # startup and caches that IP forever — after the next api-only deploy,
+    # nginx would keep proxying to a dead container until manually reloaded.
+    # Using a variable forces proxy_pass to re-resolve per this resolver's TTL.
+    resolver 127.0.0.11 valid=10s;
+    set $api_upstream api:4000;
+
+    # React Router (client-side routing) — unmatched paths fall back to the
+    # SPA shell rather than 404ing.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Static asset bundle from `vite build` is content-hashed, safe to cache
+    # hard; index.html itself is deliberately excluded from this location so
+    # it's always revalidated (otherwise deploys wouldn't pick up new hashes).
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location = /api/auth/login {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+
+    location = /api/auth/register {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+
+    location ~ ^/api/trips/[^/]+/synthesize$ {
+        limit_req zone=synthesize_limit burst=3 nodelay;
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+
+    location /api/ {
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/proxy_params.conf;
+    }
+
+    # Socket.io's handshake starts as plain HTTP and upgrades in place — both
+    # the upgrade headers and a long read_timeout matter here, since a
+    # WebSocket connection is meant to stay open far past nginx's default 60s.
+    location /socket.io/ {
+        proxy_pass http://$api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        include /etc/nginx/proxy_params.conf;
+        # Overrides proxy_params.conf's 60s default — a WebSocket connection
+        # is meant to stay open far longer than a normal HTTP request.
+        proxy_read_timeout 3600s;
+    }
+}

@@ -1,0 +1,45 @@
+# ---- build stage: compile TS and generate the Prisma client ----
+FROM node:20-alpine AS builder
+
+# node:20-alpine ships without a system OpenSSL library. Without it, Prisma's
+# engine can't detect the OpenSSL version at generate/runtime and silently
+# falls back to an incompatible engine build, which crashes on connect.
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+
+# ---- runtime stage: only what's needed to run the compiled server ----
+FROM node:20-alpine AS runner
+
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# The Prisma client is generated into node_modules/.prisma, which npm ci
+# above doesn't recreate — regenerate it against the prod node_modules using
+# the schema (not the builder's copy, so it isn't tied to dev deps).
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 4000
+
+# node:20-alpine includes a non-root "node" user (uid 1000) out of the box.
+USER node
+
+CMD ["node", "dist/server.js"]
