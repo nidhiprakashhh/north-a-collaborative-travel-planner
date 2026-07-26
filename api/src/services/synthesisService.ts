@@ -151,19 +151,20 @@ HARD CONSTRAINTS — follow these exactly, they are checked after you respond:
       : 'There is only ONE member on this trip. "compromisesMade" MUST be an empty array — there is no one else to compromise with, so do not invent trade-offs.'
   }
 4. Every entry in "conflictsDetected" must be an object of the exact shape {"description": "...", "memberNames": ["<exact name from GROUP PREFERENCES above>"]} — never a bare string, and never a name that isn't listed above.
+5. Every day's "activities" array must contain 3 to 5 specific, distinct activities — never just one. Mix concrete sightseeing (named landmarks, not generic phrases like "sightseeing"), food, and at least one lower-key/downtime activity per day.
 ${
     expectedDayCount
-      ? `5. The trip's dates give it an exact length of ${expectedDayCount} day(s) — the "days" array must contain exactly ${expectedDayCount} entries. Do not invent a different trip length.`
-      : `5. No trip dates were set, so you may choose a reasonable trip length yourself — but do not claim or imply a specific number of days was constrained by "limited time" anywhere in your response, since no date range was actually given.`
+      ? `6. The trip's dates give it an exact length of ${expectedDayCount} day(s) — the "days" array must contain exactly ${expectedDayCount} entries. Do not invent a different trip length.`
+      : `6. No trip dates were set, so you may choose a reasonable trip length yourself — but do not claim or imply a specific number of days was constrained by "limited time" anywhere in your response, since no date range was actually given.`
   }
 ${
     orderedDestinations && orderedDestinations.length > 1
-      ? `6. If the itinerary includes more than one of these destinations, they MUST appear in this exact sequence, since it's already the geographically shortest route between them (nearest-neighbor ordering by real coordinates) — do not reorder them, and do not backtrack to an earlier destination on a later day: ${orderedDestinations.join(' → ')}`
+      ? `7. If the itinerary includes more than one of these destinations, they MUST appear in this exact sequence, since it's already the geographically shortest route between them (nearest-neighbor ordering by real coordinates) — do not reorder them, and do not backtrack to an earlier destination on a later day: ${orderedDestinations.join(' → ')}`
       : ''
   }
 
 Return a JSON object with:
-- days: array of day objects with destination, activities (array of strings), accommodation, cost (a single number in USD, not broken down by member name)
+- days: array of day objects with destination, activities (array of 3-5 strings, see constraint 5), accommodation, cost (a single number in USD, not broken down by member name)
 - totalBudget: a single number (see constraint 1)
 - conflictsDetected: array of {description, memberNames} objects (see constraint 4)
 - consensusScore: a single number 0-100 how well this satisfies all members
