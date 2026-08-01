@@ -15,7 +15,7 @@ async function main(): Promise<void> {
 
   // Socket.io attaches to the same underlying http.Server as Express —
   // one process, one port, HTTP and WebSocket traffic share it.
-  const io = initializeSocket(server);
+  const io = await initializeSocket(server);
   // Lets REST controllers (e.g. the manual /synthesize trigger) reach the
   // socket server to broadcast, via req.app.get('io').
   app.set('io', io);

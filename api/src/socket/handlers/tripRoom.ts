@@ -2,8 +2,8 @@ import { prisma } from '../../db/postgres';
 import { addPresence, getPresence, removePresence } from '../presence';
 import { AppSocket } from '../types';
 
-function leaveTrip(socket: AppSocket, tripId: string): void {
-  removePresence(tripId, socket.id);
+async function leaveTrip(socket: AppSocket, tripId: string): Promise<void> {
+  await removePresence(tripId, socket.id);
   socket.leave(tripId);
   socket.to(tripId).emit('user_left', { tripId, userId: socket.data.userId });
   if (socket.data.currentTripId === tripId) {
@@ -28,10 +28,10 @@ export function registerTripRoomHandlers(socket: AppSocket): void {
       socket.data.currentTripId = tripId;
 
       const presenceUser = { userId: socket.data.userId, name: socket.data.name };
-      addPresence(tripId, socket.id, presenceUser);
+      await addPresence(tripId, socket.id, presenceUser);
 
       // Sent only to the joiner so they can render everyone already present.
-      socket.emit('presence_state', { tripId, users: getPresence(tripId) });
+      socket.emit('presence_state', { tripId, users: await getPresence(tripId) });
       // Broadcast to everyone else already in the room.
       socket.to(tripId).emit('user_joined', { tripId, user: presenceUser });
       // The client waits for this ack before allowing preference_update /
@@ -47,12 +47,14 @@ export function registerTripRoomHandlers(socket: AppSocket): void {
   });
 
   socket.on('leave_trip', ({ tripId }) => {
-    leaveTrip(socket, tripId);
+    leaveTrip(socket, tripId).catch((err) => console.error('[socket] leave_trip failed', err));
   });
 
   socket.on('disconnect', () => {
     if (socket.data.currentTripId) {
-      leaveTrip(socket, socket.data.currentTripId);
+      leaveTrip(socket, socket.data.currentTripId).catch((err) =>
+        console.error('[socket] disconnect cleanup failed', err),
+      );
     }
   });
 }

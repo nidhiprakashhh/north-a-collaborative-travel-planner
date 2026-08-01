@@ -5,7 +5,7 @@ export function registerCursorHandlers(socket: AppSocket): void {
   socket.on('cursor_update', ({ tripId, field }: CursorUpdatePayload) => {
     if (!tripId) return;
 
-    updateEditingField(tripId, socket.id, field);
+    updateEditingField(tripId, socket.id, field).catch((err) => console.error('[socket] cursor_update failed', err));
     socket.to(tripId).emit('cursor_broadcast', { tripId, userId: socket.data.userId, field });
   });
 }
