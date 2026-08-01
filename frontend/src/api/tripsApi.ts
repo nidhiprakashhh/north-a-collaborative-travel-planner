@@ -1,41 +1,37 @@
 import { apiRequest } from '../lib/apiClient';
 import type { Trip, Itinerary, TripPreferencesMap, VoteTallies } from '../types/api';
 
-export function listTrips(token: string): Promise<Trip[]> {
-  return apiRequest<Trip[]>('/api/trips', { token });
+export function listTrips(): Promise<Trip[]> {
+  return apiRequest<Trip[]>('/api/trips');
 }
 
-export function getTrip(token: string, tripId: string): Promise<Trip> {
-  return apiRequest<Trip>(`/api/trips/${tripId}`, { token });
+export function getTrip(tripId: string): Promise<Trip> {
+  return apiRequest<Trip>(`/api/trips/${tripId}`);
 }
 
-export function createTrip(
-  token: string,
-  input: { name: string; startDate?: string; endDate?: string },
-): Promise<Trip> {
-  return apiRequest<Trip>('/api/trips', { method: 'POST', token, body: input });
+export function createTrip(input: { name: string; startDate?: string; endDate?: string }): Promise<Trip> {
+  return apiRequest<Trip>('/api/trips', { method: 'POST', body: input });
 }
 
-export function joinTrip(token: string, tripId: string, inviteCode: string): Promise<Trip> {
+export function joinTrip(tripId: string, inviteCode: string): Promise<Trip> {
   return apiRequest<Trip>(`/api/trips/${tripId}/join`, {
     method: 'POST',
-    token,
     body: { inviteCode },
   });
 }
 
-export function synthesize(token: string, tripId: string): Promise<Itinerary> {
-  return apiRequest<Itinerary>(`/api/trips/${tripId}/synthesize`, { method: 'POST', token });
+export function synthesize(tripId: string): Promise<Itinerary> {
+  return apiRequest<Itinerary>(`/api/trips/${tripId}/synthesize`, { method: 'POST' });
 }
 
-export function getPreferences(token: string, tripId: string): Promise<TripPreferencesMap> {
-  return apiRequest<TripPreferencesMap>(`/api/trips/${tripId}/preferences`, { token });
+export function getPreferences(tripId: string): Promise<TripPreferencesMap> {
+  return apiRequest<TripPreferencesMap>(`/api/trips/${tripId}/preferences`);
 }
 
-export function getVotes(token: string, tripId: string): Promise<VoteTallies> {
-  return apiRequest<VoteTallies>(`/api/trips/${tripId}/votes`, { token });
+export function getVotes(tripId: string): Promise<VoteTallies> {
+  return apiRequest<VoteTallies>(`/api/trips/${tripId}/votes`);
 }
 
-export function getItinerary(token: string, tripId: string): Promise<Itinerary | null> {
-  return apiRequest<Itinerary | null>(`/api/trips/${tripId}/itinerary`, { token });
+export function getItinerary(tripId: string): Promise<Itinerary | null> {
+  return apiRequest<Itinerary | null>(`/api/trips/${tripId}/itinerary`);
 }

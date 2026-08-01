@@ -54,3 +54,10 @@ export async function loginUser({ email, password }: LoginInput): Promise<AuthRe
   const token = signToken({ userId: user.id, email: user.email });
   return { token, user: { id: user.id, email: user.email, name: user.name } };
 }
+
+export async function getUserById(userId: string): Promise<AuthResult['user'] | null> {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, name: true },
+  });
+}

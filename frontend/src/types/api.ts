@@ -8,11 +8,6 @@ export interface AuthUser {
   name: string;
 }
 
-export interface AuthResult {
-  token: string;
-  user: AuthUser;
-}
-
 export type TripRole = 'owner' | 'member';
 
 export interface TripMember {

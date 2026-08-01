@@ -13,21 +13,21 @@ export class ApiError extends Error {
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
-  token?: string | null;
 }
 
 // A thin fetch wrapper — not axios, since the only things every call needs
-// (base URL, JSON body, Bearer header, parsed error message) are a handful
-// of lines and don't warrant a dependency.
+// (base URL, JSON body, parsed error message) are a handful of lines and
+// don't warrant a dependency.
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (options.token) {
-    headers.Authorization = `Bearer ${options.token}`;
-  }
 
   const res = await fetch(`${env.apiUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
+    // Auth now rides on an httpOnly cookie, not a header we attach — this is
+    // what makes the browser actually send/accept it, including cross-port
+    // in local dev (localhost:5173 -> localhost:4000).
+    credentials: 'include',
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 

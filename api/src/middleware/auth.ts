@@ -1,17 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
+import { AUTH_COOKIE_NAME } from '../utils/cookies';
 
-// Reads "Authorization: Bearer <token>", verifies it, and attaches the
-// decoded userId to the request for downstream route handlers.
+// Reads the httpOnly auth cookie, verifies it, and attaches the decoded
+// userId to the request for downstream route handlers.
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const header = req.headers.authorization;
+  const token = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
-  if (!header || !header.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing or malformed Authorization header' });
+  if (!token) {
+    res.status(401).json({ error: 'Not authenticated' });
     return;
   }
-
-  const token = header.slice('Bearer '.length);
 
   try {
     const payload = verifyToken(token);

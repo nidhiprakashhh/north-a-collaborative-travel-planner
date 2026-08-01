@@ -15,16 +15,18 @@ interface UseSocketResult {
 // of a valid token. Anything trip-specific (rooms, presence, live state)
 // belongs in useTrip, which consumes this.
 export function useSocket(): UseSocketResult {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const socketRef = useRef<AppSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       return undefined;
     }
 
-    const socket: AppSocket = io(env.apiUrl, { auth: { token } });
+    // withCredentials so the httpOnly auth cookie rides along on the
+    // handshake request — there's no token to hand over explicitly anymore.
+    const socket: AppSocket = io(env.apiUrl, { withCredentials: true });
     socketRef.current = socket;
 
     const handleConnect = () => setConnected(true);
@@ -40,7 +42,7 @@ export function useSocket(): UseSocketResult {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [token]);
+  }, [isAuthenticated]);
 
   return { socket: socketRef.current, connected };
 }

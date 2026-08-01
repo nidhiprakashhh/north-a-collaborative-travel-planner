@@ -1,63 +1,56 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import * as authApi from '../api/authApi';
 import type { AuthUser } from '../types/api';
 
-const TOKEN_STORAGE_KEY = 'north:token';
-const USER_STORAGE_KEY = 'north:user';
-
 interface AuthContextValue {
-  token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
+  // True until the initial /api/auth/me check resolves — ProtectedRoute
+  // needs this to avoid bouncing an actually-logged-in user to /auth just
+  // because that check hasn't come back yet on a fresh page load.
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readStoredUser(): AuthUser | null {
-  const raw = localStorage.getItem(USER_STORAGE_KEY);
-  return raw ? (JSON.parse(raw) as AuthUser) : null;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY));
-  const [user, setUser] = useState<AuthUser | null>(readStoredUser);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const persist = useCallback((nextToken: string, nextUser: AuthUser) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
-    setToken(nextToken);
-    setUser(nextUser);
+  useEffect(() => {
+    // One-time cleanup of the old localStorage-based session, now dead
+    // weight now that the token lives in an httpOnly cookie instead.
+    localStorage.removeItem('north:token');
+    localStorage.removeItem('north:user');
+
+    authApi
+      .me()
+      .then((result) => setUser(result.user))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const result = await authApi.login(email, password);
-      persist(result.token, result.user);
-    },
-    [persist],
-  );
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await authApi.login(email, password);
+    setUser(result.user);
+  }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, name: string) => {
-      const result = await authApi.register(email, password, name);
-      persist(result.token, result.user);
-    },
-    [persist],
-  );
+  const register = useCallback(async (email: string, password: string, name: string) => {
+    const result = await authApi.register(email, password, name);
+    setUser(result.user);
+  }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    setToken(null);
+  const logout = useCallback(async () => {
+    await authApi.logout();
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ token, user, isAuthenticated: Boolean(token), login, register, logout }),
-    [token, user, login, register, logout],
+    () => ({ user, isAuthenticated: Boolean(user), isLoading, login, register, logout }),
+    [user, isLoading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
