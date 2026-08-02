@@ -12,6 +12,37 @@ jobs:
     defaults:
       run:
         working-directory: api
+    # authService/tripService/voteService tests run against real Postgres
+    # and Mongo (see api/src/test/setup.ts) rather than mocks, so both need
+    # to actually exist here as service containers. Redis isn't included -
+    # nothing under test connects to it, env.ts just needs a syntactically
+    # valid REDIS_URL to pass its required() check at import time.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: north_user
+          POSTGRES_PASSWORD: north_password
+          POSTGRES_DB: north_db
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U north_user -d north_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://north_user:north_password@localhost:5432/north_db?schema=public
+      MONGO_URI: mongodb://localhost:27017/north_preferences
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_test_secret_not_used_anywhere_real
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +57,8 @@ jobs:
       # Dockerfile does.
       - run: npx prisma generate
       - run: npm run build
+      - run: npx prisma migrate deploy
+      - run: npm test
 
   frontend:
     runs-on: ubuntu-latest
