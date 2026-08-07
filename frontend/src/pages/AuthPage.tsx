@@ -31,6 +31,19 @@ export function AuthPage() {
     }
   }
 
+  async function handleDemoLogin() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await login('demo@example.com', 'NorthDemo2026');
+      navigate('/trips');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-sm">
@@ -88,6 +101,22 @@ export function AuthPage() {
             {mode === 'login' ? 'Log in' : 'Create account'}
           </button>
         </form>
+
+        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          <p className="font-medium text-slate-700">Just want to look around?</p>
+          <p className="mt-1">
+            Demo account: <span className="font-mono">demo@example.com</span> /{' '}
+            <span className="font-mono">NorthDemo2026</span>
+          </p>
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            disabled={submitting}
+            className="mt-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+          >
+            Log in as demo
+          </button>
+        </div>
       </div>
     </div>
   );
