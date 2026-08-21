@@ -1,10 +1,18 @@
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../hooks/useTrip';
-import { useTripDetail, useInitialPreferences, useInitialVotes, useInitialItinerary, useSynthesize } from '../queries/tripQueries';
+import {
+  useTripDetail,
+  useInitialPreferences,
+  useInitialVotes,
+  useInitialItinerary,
+  useInitialConsiderList,
+  useSynthesize,
+} from '../queries/tripQueries';
 import { MemberPresence } from '../components/MemberPresence';
 import { PreferenceForm } from '../components/PreferenceForm';
 import { VotingPanel } from '../components/VotingPanel';
+import { ConsiderBoard } from '../components/ConsiderBoard';
 import { ItineraryView } from '../components/ItineraryView';
 import { ConflictBanner } from '../components/ConflictBanner';
 
@@ -17,6 +25,7 @@ function TripRoomContent({ tripId }: { tripId: string }) {
   const { data: initialPreferences } = useInitialPreferences(tripId);
   const { data: initialVotes } = useInitialVotes(tripId);
   const { data: initialItinerary } = useInitialItinerary(tripId);
+  const { data: initialConsiderList } = useInitialConsiderList(tripId);
   const synthesize = useSynthesize(tripId);
 
   const {
@@ -26,12 +35,20 @@ function TripRoomContent({ tripId }: { tripId: string }) {
     preferencesByUser,
     voteTallies,
     itinerary,
+    considerList,
     isSynthesizing,
     lastError,
     sendPreferenceUpdate,
     castVote,
     sendCursorUpdate,
-  } = useTrip(tripId, { preferences: initialPreferences, votes: initialVotes, itinerary: initialItinerary });
+    addConsiderIdea,
+    removeConsiderIdea,
+  } = useTrip(tripId, {
+    preferences: initialPreferences,
+    votes: initialVotes,
+    itinerary: initialItinerary,
+    considerList: initialConsiderList,
+  });
 
   const myPreference = user ? preferencesByUser[user.id] : undefined;
 
@@ -60,6 +77,13 @@ function TripRoomContent({ tripId }: { tripId: string }) {
         <PreferenceForm initial={myPreference} onSubmit={sendPreferenceUpdate} onFocusField={sendCursorUpdate} />
         <VotingPanel preferencesByUser={preferencesByUser} voteTallies={voteTallies} onCastVote={castVote} />
       </div>
+
+      <ConsiderBoard
+        ideas={considerList}
+        members={trip?.members ?? []}
+        onAdd={addConsiderIdea}
+        onRemove={removeConsiderIdea}
+      />
 
       <ItineraryView
         itinerary={itinerary}

@@ -70,3 +70,11 @@ export type TripPreferencesMap = Record<string, PreferenceDTO>;
 export interface VoteTallies {
   tallies: Record<string, number>;
 }
+
+export interface ConsiderIdeaDTO {
+  id: string;
+  name: string;
+  link?: string;
+  addedBy: string;
+  createdAt: string;
+}

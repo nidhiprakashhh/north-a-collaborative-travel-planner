@@ -78,3 +78,12 @@ export function useInitialItinerary(tripId: string | undefined) {
     enabled: isAuthenticated && Boolean(tripId),
   });
 }
+
+export function useInitialConsiderList(tripId: string | undefined) {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ['trips', tripId, 'consider'],
+    queryFn: () => tripsApi.getConsiderList(tripId!),
+    enabled: isAuthenticated && Boolean(tripId),
+  });
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from './useSocket';
-import type { Itinerary, TripPreferencesMap, VoteTallies } from '../types/api';
+import type { Itinerary, TripPreferencesMap, VoteTallies, ConsiderIdeaDTO } from '../types/api';
 import type {
   PresenceUser,
   PreferenceUpdatePayload,
@@ -9,6 +9,8 @@ import type {
   CursorBroadcastPayload,
   SynthesisStartedPayload,
   ItineraryUpdatedPayload,
+  ConsiderAddedPayload,
+  ConsiderRemovedPayload,
   ErrorPayload,
 } from '../types/socket';
 
@@ -27,6 +29,7 @@ export interface InitialTripState {
   preferences?: TripPreferencesMap;
   votes?: VoteTallies;
   itinerary?: Itinerary | null;
+  considerList?: ConsiderIdeaDTO[];
 }
 
 interface UseTripResult {
@@ -36,11 +39,14 @@ interface UseTripResult {
   preferencesByUser: Record<string, TripPreferenceState>;
   voteTallies: Record<string, number>;
   itinerary: ItineraryUpdatedPayload | null;
+  considerList: ConsiderIdeaDTO[];
   isSynthesizing: boolean;
   lastError: string | null;
   sendPreferenceUpdate: (updates: Omit<PreferenceUpdatePayload, 'tripId'>) => void;
   castVote: (destination: string) => void;
   sendCursorUpdate: (field: string) => void;
+  addConsiderIdea: (name: string, link?: string) => void;
+  removeConsiderIdea: (ideaId: string) => void;
 }
 
 // High-level: consumes useSocket, joins/leaves the trip's room, and keeps
@@ -58,17 +64,19 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
   const [preferencesByUser, setPreferencesByUser] = useState<Record<string, TripPreferenceState>>({});
   const [voteTallies, setVoteTallies] = useState<Record<string, number>>({});
   const [itinerary, setItinerary] = useState<ItineraryUpdatedPayload | null>(null);
+  const [considerList, setConsiderList] = useState<ConsiderIdeaDTO[]>([]);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
 
-  // Each of these three REST-backed queries resolves independently and at a
+  // Each of these REST-backed queries resolves independently and at a
   // different time, so each gets its own "seeded for this tripId" ref —
-  // gating all three behind one shared flag would mean whichever query
-  // resolves after the first one silently never seeds its data.
+  // gating them behind one shared flag would mean whichever query resolves
+  // after the first one silently never seeds its data.
   const seededPreferencesRef = useRef<string | undefined>(undefined);
   const seededVotesRef = useRef<string | undefined>(undefined);
   const seededItineraryRef = useRef<string | undefined>(undefined);
+  const seededConsiderRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!tripId || !initial?.preferences || seededPreferencesRef.current === tripId) {
@@ -106,6 +114,14 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       setItinerary((prev) => prev ?? seedItinerary);
     }
   }, [tripId, initial?.itinerary]);
+
+  useEffect(() => {
+    if (!tripId || !initial?.considerList || seededConsiderRef.current === tripId) {
+      return;
+    }
+    seededConsiderRef.current = tripId;
+    setConsiderList((prev) => (prev.length > 0 ? prev : initial.considerList!));
+  }, [tripId, initial?.considerList]);
 
   useEffect(() => {
     if (!socket || !connected || !tripId) {
@@ -167,6 +183,14 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       setItinerary(payload);
       setIsSynthesizing(false);
     };
+    const handleConsiderAdded = (payload: ConsiderAddedPayload) => {
+      if (payload.tripId !== tripId) return;
+      setConsiderList((prev) => [...prev, payload.idea]);
+    };
+    const handleConsiderRemoved = (payload: ConsiderRemovedPayload) => {
+      if (payload.tripId !== tripId) return;
+      setConsiderList((prev) => prev.filter((i) => i.id !== payload.ideaId));
+    };
     const handleErrorMessage = (payload: ErrorPayload) => {
       setLastError(payload.message);
       setIsSynthesizing(false);
@@ -180,6 +204,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     socket.on('cursor_broadcast', handleCursorBroadcast);
     socket.on('synthesis_started', handleSynthesisStarted);
     socket.on('itinerary_updated', handleItineraryUpdated);
+    socket.on('consider_added', handleConsiderAdded);
+    socket.on('consider_removed', handleConsiderRemoved);
     socket.on('error_message', handleErrorMessage);
 
     return () => {
@@ -193,6 +219,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       socket.off('cursor_broadcast', handleCursorBroadcast);
       socket.off('synthesis_started', handleSynthesisStarted);
       socket.off('itinerary_updated', handleItineraryUpdated);
+      socket.off('consider_added', handleConsiderAdded);
+      socket.off('consider_removed', handleConsiderRemoved);
       socket.off('error_message', handleErrorMessage);
 
       // Reset so switching to a different trip doesn't show stale data.
@@ -201,6 +229,7 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       setPreferencesByUser({});
       setVoteTallies({});
       setItinerary(null);
+      setConsiderList([]);
       setIsSynthesizing(false);
       setLastError(null);
     };
@@ -230,6 +259,22 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     [socket, tripId, joined],
   );
 
+  const addConsiderIdea = useCallback(
+    (name: string, link?: string) => {
+      if (!socket || !tripId || !joined) return;
+      socket.emit('consider_add', { tripId, name, link });
+    },
+    [socket, tripId, joined],
+  );
+
+  const removeConsiderIdea = useCallback(
+    (ideaId: string) => {
+      if (!socket || !tripId || !joined) return;
+      socket.emit('consider_remove', { tripId, ideaId });
+    },
+    [socket, tripId, joined],
+  );
+
   return {
     connected,
     joined,
@@ -237,10 +282,13 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     preferencesByUser,
     voteTallies,
     itinerary,
+    considerList,
     isSynthesizing,
     lastError,
     sendPreferenceUpdate,
     castVote,
     sendCursorUpdate,
+    addConsiderIdea,
+    removeConsiderIdea,
   };
 }

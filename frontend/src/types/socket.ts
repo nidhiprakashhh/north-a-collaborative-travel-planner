@@ -39,6 +39,17 @@ export interface CursorUpdatePayload {
   field: string;
 }
 
+export interface ConsiderAddPayload {
+  tripId: string;
+  name: string;
+  link?: string;
+}
+
+export interface ConsiderRemovePayload {
+  tripId: string;
+  ideaId: string;
+}
+
 // ---- Server -> Client payloads ----
 
 export interface PresenceStatePayload {
@@ -100,6 +111,24 @@ export interface ErrorPayload {
   message: string;
 }
 
+export interface ConsiderIdeaPayload {
+  id: string;
+  name: string;
+  link?: string;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface ConsiderAddedPayload {
+  tripId: string;
+  idea: ConsiderIdeaPayload;
+}
+
+export interface ConsiderRemovedPayload {
+  tripId: string;
+  ideaId: string;
+}
+
 export interface ServerToClientEvents {
   presence_state: (payload: PresenceStatePayload) => void;
   user_joined: (payload: UserJoinedPayload) => void;
@@ -109,6 +138,8 @@ export interface ServerToClientEvents {
   cursor_broadcast: (payload: CursorBroadcastPayload) => void;
   synthesis_started: (payload: SynthesisStartedPayload) => void;
   itinerary_updated: (payload: ItineraryUpdatedPayload) => void;
+  consider_added: (payload: ConsiderAddedPayload) => void;
+  consider_removed: (payload: ConsiderRemovedPayload) => void;
   error_message: (payload: ErrorPayload) => void;
 }
 
@@ -123,4 +154,6 @@ export interface ClientToServerEvents {
   preference_update: (payload: PreferenceUpdatePayload) => void;
   vote_cast: (payload: VoteCastPayload) => void;
   cursor_update: (payload: CursorUpdatePayload) => void;
+  consider_add: (payload: ConsiderAddPayload) => void;
+  consider_remove: (payload: ConsiderRemovePayload) => void;
 }
