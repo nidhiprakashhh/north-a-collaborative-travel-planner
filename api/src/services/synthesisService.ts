@@ -266,23 +266,55 @@ function levenshteinDistance(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
-// A plain `.includes()` check means a single typo in what a member typed
-// (e.g. "Fushimi Inikari" vs the model's correctly-spelled "Fushimi Inari")
-// produces a false-positive conflict even though the model got it right —
-// this instead slides a same-word-count window over `haystack` and accepts
-// a match within ~20% character edit distance of `needle`.
-function fuzzyIncludes(haystack: string, needle: string): boolean {
+// Checks whether every word in `needleWords` appears, in order, within
+// `windowWords` — skipping over extra words in between — allowing each
+// individual word a small typo tolerance rather than comparing the whole
+// phrase as one string.
+function needleWordsAppearInOrder(needleWords: string[], windowWords: string[]): boolean {
+  let windowIndex = 0;
+  for (const needleWord of needleWords) {
+    let found = false;
+    while (windowIndex < windowWords.length) {
+      const candidate = windowWords[windowIndex];
+      windowIndex++;
+      const maxCharDistance = Math.max(1, Math.ceil(needleWord.length * 0.3));
+      if (levenshteinDistance(candidate, needleWord) <= maxCharDistance) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) return false;
+  }
+  return true;
+}
+
+// A plain `.includes()` check produces false-positive conflicts in two real
+// cases seen in production: a typo in what a member typed (e.g. "Fushimi
+// Inikari" vs the model's correctly-spelled "Fushimi Inari"), and the model
+// inserting an extra, correct qualifier word (e.g. member wrote "teamLab
+// digital art museum", model wrote "teamLab Borderless digital art
+// museum" — Borderless being the real exhibit name). A fixed-word-count
+// sliding window catches the first but not the second, since no window the
+// same length as the needle aligns closely enough once a word is inserted —
+// this instead allows up to 3 extra words within the matched span, and
+// fuzzy-matches word-by-word rather than the whole phrase as one string.
+// Exported for direct unit testing — this function has caught two real
+// production bugs already (a typo, and a model-inserted qualifier word),
+// which is a strong enough signal to pin its behavior down with tests
+// rather than only exercising it indirectly through a full synthesis run.
+export function fuzzyIncludes(haystack: string, needle: string): boolean {
   if (!needle) return false;
   if (haystack.includes(needle)) return true;
 
-  const words = haystack.split(/\s+/).filter(Boolean);
-  const needleWordCount = needle.split(/\s+/).filter(Boolean).length;
-  const maxDistance = Math.max(1, Math.ceil(needle.length * 0.2));
+  const haystackWords = haystack.split(/\s+/).filter(Boolean);
+  const needleWords = needle.split(/\s+/).filter(Boolean);
+  if (needleWords.length === 0) return false;
 
-  for (let i = 0; i <= words.length - needleWordCount; i++) {
-    const window = words.slice(i, i + needleWordCount).join(' ');
-    if (Math.abs(window.length - needle.length) > maxDistance) continue;
-    if (levenshteinDistance(window, needle) <= maxDistance) return true;
+  const maxWindow = needleWords.length + 3;
+
+  for (let start = 0; start <= haystackWords.length - needleWords.length; start++) {
+    const window = haystackWords.slice(start, start + maxWindow);
+    if (needleWordsAppearInOrder(needleWords, window)) return true;
   }
   return false;
 }
