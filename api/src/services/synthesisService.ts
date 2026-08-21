@@ -18,7 +18,6 @@ interface MemberPromptData {
   destinations: string[];
   activityTypes: string[];
   mustSee: string[];
-  considerPlaces: string[];
   dealbreakers: string[];
 }
 
@@ -95,7 +94,6 @@ async function gatherPromptData(
     destinations: p.destinations,
     activityTypes: p.activityTypes,
     mustSee: p.mustSee,
-    considerPlaces: p.considerPlaces,
     dealbreakers: p.dealbreakers,
   }));
 
@@ -147,7 +145,6 @@ ${members
   - Destinations wanted: ${m.destinations.join(', ') || 'none specified'}
   - Activities: ${m.activityTypes.join(', ') || 'none specified'}
   - Must see: ${m.mustSee.join(', ') || 'none specified'}
-  - Also interested in (NOT must-see, just ideas worth considering): ${m.considerPlaces.join(', ') || 'none specified'}
   - Dealbreakers: ${m.dealbreakers.join(', ') || 'none specified'}
 `,
     )
@@ -160,36 +157,35 @@ ${factsSection}
 HARD CONSTRAINTS — follow these exactly, they are checked after you respond:
 1. Each day's "cost" and the overall "totalBudget" must stay close to the group's average stated daily budget of $${avgBudget.toFixed(0)} (averaged across ${members.length} member(s)). Do not invent costs far above this — you have no real pricing data, so anchor everything to the stated budget instead of guessing.
 2. Every "Must see" item listed by any member must appear in some day's "activities". If it is truly impossible to include given the dates/destinations, do NOT silently omit it — instead add an entry to "conflictsDetected" explaining why, attributed to that member's exact name.
-3. "Also interested in" items are NOT must-see — they are optional inspiration. Use any of them that reasonably fit, but you may leave any or all of them out with no explanation and no "conflictsDetected" entry — omitting one is never a conflict.
-4. ${
+3. ${
     multiMember
       ? `There are ${members.length} members with potentially differing preferences — "compromisesMade" should explain real trade-offs you made between their specific stated preferences.`
       : 'There is only ONE member on this trip. "compromisesMade" MUST be an empty array — there is no one else to compromise with, so do not invent trade-offs.'
   }
-5. Every entry in "conflictsDetected" must be an object of the exact shape {"description": "...", "memberNames": ["<exact name from GROUP PREFERENCES above>"]} — never a bare string, and never a name that isn't listed above.
-6. Every day's "activities" array must contain 3 to 5 specific, distinct activities — never just one. Mix concrete sightseeing (named landmarks, not generic phrases like "sightseeing"), food, and at least one lower-key/downtime activity per day.
+4. Every entry in "conflictsDetected" must be an object of the exact shape {"description": "...", "memberNames": ["<exact name from GROUP PREFERENCES above>"]} — never a bare string, and never a name that isn't listed above.
+5. Every day's "activities" array must contain 3 to 5 specific, distinct activities — never just one. Mix concrete sightseeing (named landmarks, not generic phrases like "sightseeing"), food, and at least one lower-key/downtime activity per day.
 ${
     expectedDayCount
-      ? `7. The trip's dates give it an exact length of ${expectedDayCount} day(s) — the "days" array must contain exactly ${expectedDayCount} entries. Do not invent a different trip length.`
-      : `7. No trip dates were set, so you may choose a reasonable trip length yourself — but do not claim or imply a specific number of days was constrained by "limited time" anywhere in your response, since no date range was actually given.`
+      ? `6. The trip's dates give it an exact length of ${expectedDayCount} day(s) — the "days" array must contain exactly ${expectedDayCount} entries. Do not invent a different trip length.`
+      : `6. No trip dates were set, so you may choose a reasonable trip length yourself — but do not claim or imply a specific number of days was constrained by "limited time" anywhere in your response, since no date range was actually given.`
   }
 ${
     orderedDestinations && orderedDestinations.length > 1
-      ? `8. If the itinerary includes more than one of these destinations, they MUST appear in this exact sequence, since it's already the geographically shortest route between them (nearest-neighbor ordering by real coordinates) — do not reorder them, and do not backtrack to an earlier destination on a later day: ${orderedDestinations.join(' → ')}`
+      ? `7. If the itinerary includes more than one of these destinations, they MUST appear in this exact sequence, since it's already the geographically shortest route between them (nearest-neighbor ordering by real coordinates) — do not reorder them, and do not backtrack to an earlier destination on a later day: ${orderedDestinations.join(' → ')}`
       : ''
   }
 ${
     destinationFacts.size > 0
-      ? `9. REAL DESTINATION FACTS above are from an actual travel guide, not your own memory — prefer those specific named attractions/activities over inventing alternatives for any destination they cover.`
+      ? `8. REAL DESTINATION FACTS above are from an actual travel guide, not your own memory — prefer those specific named attractions/activities over inventing alternatives for any destination they cover.`
       : ''
   }
 
 Return a JSON object with:
-- days: array of day objects with destination, activities (array of 3-5 strings, see constraint 6), accommodation, cost (a single number in USD, not broken down by member name)
+- days: array of day objects with destination, activities (array of 3-5 strings, see constraint 5), accommodation, cost (a single number in USD, not broken down by member name)
 - totalBudget: a single number (see constraint 1)
-- conflictsDetected: array of {description, memberNames} objects (see constraint 5)
+- conflictsDetected: array of {description, memberNames} objects (see constraint 4)
 - consensusScore: a single number 0-100 how well this satisfies all members
-- compromisesMade: array of strings (see constraint 4)
+- compromisesMade: array of strings (see constraint 3)
 
 Respond with valid JSON only. Every numeric field must be a plain number, never an object broken down by person.`;
 }

@@ -8,12 +8,6 @@ export interface IPreference extends Document {
   budgetPerDay: number;
   activityTypes: string[];
   mustSee: string[];
-  // Loose ideas a member wants the group to consider — "saw this on
-  // Instagram, might be cool" — distinct from mustSee: nothing here is a
-  // hard requirement, no guardrail enforces it appears, and synthesis is
-  // free to leave any of it out with no explanation needed. Optional by
-  // design; an empty list changes nothing about today's behavior.
-  considerPlaces: string[];
   dealbreakers: string[];
   updatedAt: Date;
 }
@@ -27,7 +21,6 @@ const preferenceSchema = new Schema<IPreference>(
     budgetPerDay: { type: Number, default: 0 },
     activityTypes: { type: [String], default: [] },
     mustSee: { type: [String], default: [] },
-    considerPlaces: { type: [String], default: [] },
     dealbreakers: { type: [String], default: [] },
   },
   { timestamps: { createdAt: false, updatedAt: true } },

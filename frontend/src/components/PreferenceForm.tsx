@@ -9,7 +9,6 @@ interface PreferenceFormProps {
     budgetPerDay?: number;
     activityTypes?: string[];
     mustSee?: string[];
-    considerPlaces?: string[];
     dealbreakers?: string[];
   }) => void;
   onFocusField: (field: string) => void;
@@ -21,7 +20,6 @@ interface FormState {
   budgetPerDay: string;
   activityTypes: string;
   mustSee: string;
-  considerPlaces: string;
   dealbreakers: string;
 }
 
@@ -32,7 +30,6 @@ function toFormState(pref: TripPreferenceState | undefined): FormState {
     budgetPerDay: pref ? String(pref.budgetPerDay) : '',
     activityTypes: pref?.activityTypes.join(', ') ?? '',
     mustSee: pref?.mustSee.join(', ') ?? '',
-    considerPlaces: pref?.considerPlaces.join(', ') ?? '',
     dealbreakers: pref?.dealbreakers.join(', ') ?? '',
   };
 }
@@ -63,7 +60,6 @@ export function PreferenceForm({ initial, onSubmit, onFocusField }: PreferenceFo
         budgetPerDay: Number(next.budgetPerDay) || 0,
         activityTypes: splitList(next.activityTypes),
         mustSee: splitList(next.mustSee),
-        considerPlaces: splitList(next.considerPlaces),
         dealbreakers: splitList(next.dealbreakers),
       });
     }, DEBOUNCE_MS);
@@ -87,11 +83,6 @@ export function PreferenceForm({ initial, onSubmit, onFocusField }: PreferenceFo
     { key: 'availableDates', label: 'Available dates', placeholder: '2026-09-01, 2026-09-10' },
     { key: 'activityTypes', label: 'Activities', placeholder: 'food, hiking, nightlife' },
     { key: 'mustSee', label: 'Must see', placeholder: 'Fushimi Inari' },
-    {
-      key: 'considerPlaces',
-      label: 'Worth considering (not must-see)',
-      placeholder: 'Ichiran Ramen, that café from Instagram',
-    },
     { key: 'dealbreakers', label: 'Dealbreakers', placeholder: 'no early mornings' },
   ];
 

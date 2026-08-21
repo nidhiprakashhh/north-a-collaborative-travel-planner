@@ -23,7 +23,6 @@ export interface PreferenceUpdatePayload {
   budgetPerDay?: number;
   activityTypes?: string[];
   mustSee?: string[];
-  considerPlaces?: string[];
   dealbreakers?: string[];
 }
 
@@ -63,7 +62,6 @@ export interface PreferenceBroadcastPayload {
     budgetPerDay: number;
     activityTypes: string[];
     mustSee: string[];
-    considerPlaces: string[];
     dealbreakers: string[];
     updatedAt: Date;
   };
