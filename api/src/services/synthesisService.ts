@@ -5,6 +5,7 @@ import { Preference } from '../models/Preference';
 import { ItineraryVersion, IItineraryVersion, ConflictEntry } from '../models/ItineraryVersion';
 import { computeVoteTallies } from './voteService';
 import { orderDestinationsGeographically } from './geocodingService';
+import { getDestinationFacts } from './knowledgeService';
 import { HttpError } from '../utils/httpError';
 
 const groq = new Groq({ apiKey: env.groqApiKey });
@@ -117,9 +118,19 @@ function buildPrompt(
   topDestinations: string,
   expectedDayCount: number | null,
   orderedDestinations: string[] | null,
+  destinationFacts: Map<string, string>,
 ): string {
   const avgBudget = averageBudgetPerDay(members);
   const multiMember = members.length > 1;
+
+  const factsSection =
+    destinationFacts.size > 0
+      ? `\nREAL DESTINATION FACTS (from a real travel guide — ground named places in these, don't invent competing ones for a destination that already has real facts listed):\n${Array.from(
+          destinationFacts.entries(),
+        )
+          .map(([name, facts]) => `[${name}]\n${facts}`)
+          .join('\n\n')}\n`
+      : '';
 
   return `
 You are a travel planning assistant. Generate a detailed trip itinerary.
@@ -141,6 +152,7 @@ ${members
 
 VOTING RESULTS:
 ${topDestinations}
+${factsSection}
 
 HARD CONSTRAINTS — follow these exactly, they are checked after you respond:
 1. Each day's "cost" and the overall "totalBudget" must stay close to the group's average stated daily budget of $${avgBudget.toFixed(0)} (averaged across ${members.length} member(s)). Do not invent costs far above this — you have no real pricing data, so anchor everything to the stated budget instead of guessing.
@@ -160,6 +172,11 @@ ${
 ${
     orderedDestinations && orderedDestinations.length > 1
       ? `7. If the itinerary includes more than one of these destinations, they MUST appear in this exact sequence, since it's already the geographically shortest route between them (nearest-neighbor ordering by real coordinates) — do not reorder them, and do not backtrack to an earlier destination on a later day: ${orderedDestinations.join(' → ')}`
+      : ''
+  }
+${
+    destinationFacts.size > 0
+      ? `8. REAL DESTINATION FACTS above are from an actual travel guide, not your own memory — prefer those specific named attractions/activities over inventing alternatives for any destination they cover.`
       : ''
   }
 
@@ -383,6 +400,23 @@ async function requestSynthesis(prompt: string): Promise<RawSynthesisResult> {
   );
 }
 
+// Real facts (not the model's own memory) for each destination, from a real
+// travel guide — see knowledgeService.ts. A destination that fails to
+// resolve (network issue, no Wikivoyage page) is just left out of the map
+// rather than blocking synthesis, same fail-open pattern as geocoding below.
+async function gatherDestinationFacts(destinations: string[]): Promise<Map<string, string>> {
+  const facts = new Map<string, string>();
+  for (const destination of destinations) {
+    try {
+      const result = await getDestinationFacts(destination);
+      if (result) facts.set(destination, result);
+    } catch (err) {
+      console.warn(`[synthesis] failed to fetch destination facts for "${destination}"`, err);
+    }
+  }
+  return facts;
+}
+
 export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayload> {
   const { members, topDestinations, expectedDayCount } = await gatherPromptData(tripId);
 
@@ -395,8 +429,9 @@ export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayl
     console.warn('[synthesis] geographic ordering failed, continuing without it', err);
     return null;
   });
+  const destinationFacts = await gatherDestinationFacts(allDestinations);
 
-  const prompt = buildPrompt(members, topDestinations, expectedDayCount, orderedDestinations);
+  const prompt = buildPrompt(members, topDestinations, expectedDayCount, orderedDestinations, destinationFacts);
 
   const parsed = await requestSynthesis(prompt);
 

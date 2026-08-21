@@ -97,12 +97,12 @@ export async function getItinerary(req: Request, res: Response): Promise<void> {
 
 export async function synthesize(req: Request, res: Response): Promise<void> {
   const tripId = req.params.id;
+  const io = req.app.get('io') as AppServer | undefined;
 
   try {
     // Confirms membership (and that the trip exists) before spending an LLM call.
     await getTripById(req.userId!, tripId);
 
-    const io = req.app.get('io') as AppServer | undefined;
     // Emitted before the LLM call so every connected client (including ones
     // that didn't trigger this request) can show a "synthesizing..." state.
     io?.to(tripId).emit('synthesis_started', { tripId });
@@ -112,6 +112,13 @@ export async function synthesize(req: Request, res: Response): Promise<void> {
 
     res.status(200).json(itinerary);
   } catch (err) {
+    // synthesis_started was broadcast to the whole room, so a failure has to
+    // reach everyone the same way — the "synthesizing..." state on every
+    // connected client (including whoever triggered this request) is driven
+    // by socket events, not by this HTTP response, so without this it spins
+    // forever on any synthesis failure instead of surfacing the error.
+    const message = err instanceof HttpError ? err.message : 'Failed to synthesize itinerary';
+    io?.to(tripId).emit('error_message', { message });
     handleError(err, res, 'Failed to synthesize itinerary');
   }
 }
