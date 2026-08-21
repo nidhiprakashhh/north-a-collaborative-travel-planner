@@ -52,5 +52,10 @@ async function checkAndTriggerSynthesis(io: AppServer, tripId: string, scheduled
     io.to(tripId).emit('itinerary_updated', itinerary);
   } catch (err) {
     console.error(`[synthesis] failed for trip ${tripId}`, err);
+    // Same bug as the manual /synthesize REST path had: synthesis_started
+    // was broadcast to the whole room, so a silent failure here left every
+    // connected client's socket-driven "synthesizing..." state stuck
+    // forever instead of clearing.
+    io.to(tripId).emit('error_message', { message: 'Failed to synthesize itinerary' });
   }
 }
