@@ -6,6 +6,7 @@ export interface PreferenceDTO {
   budgetPerDay: number;
   activityTypes: string[];
   mustSee: string[];
+  considerPlaces: string[];
   dealbreakers: string[];
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ export async function getTripPreferences(tripId: string): Promise<Record<string,
         budgetPerDay: p.budgetPerDay,
         activityTypes: p.activityTypes,
         mustSee: p.mustSee,
+        considerPlaces: p.considerPlaces,
         dealbreakers: p.dealbreakers,
         updatedAt: p.updatedAt,
       },

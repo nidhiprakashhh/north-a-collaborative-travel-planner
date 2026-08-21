@@ -29,6 +29,7 @@ export function registerPreferenceHandlers(io: AppServer, socket: AppSocket): vo
           budgetPerDay: preference.budgetPerDay,
           activityTypes: preference.activityTypes,
           mustSee: preference.mustSee,
+          considerPlaces: preference.considerPlaces,
           dealbreakers: preference.dealbreakers,
           updatedAt: preference.updatedAt,
         },

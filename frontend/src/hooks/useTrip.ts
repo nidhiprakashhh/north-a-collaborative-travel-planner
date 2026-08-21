@@ -19,6 +19,7 @@ export interface TripPreferenceState {
   budgetPerDay: number;
   activityTypes: string[];
   mustSee: string[];
+  considerPlaces: string[];
   dealbreakers: string[];
   updatedAt: string;
 }
