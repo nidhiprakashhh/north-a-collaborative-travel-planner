@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fuzzyIncludes } from './synthesisService';
+import { fuzzyIncludes, coerceStringArray } from './synthesisService';
 
 // Both cases here are real false-positive conflicts caught in production,
 // not hypothetical edge cases.
@@ -37,5 +37,51 @@ describe('fuzzyIncludes', () => {
 
   it('returns false for an empty needle', () => {
     expect(fuzzyIncludes('anything at all', '')).toBe(false);
+  });
+});
+
+describe('coerceStringArray', () => {
+  it('passes through legitimate strings unchanged', () => {
+    expect(coerceStringArray(['Visit Kinkaku-ji', 'Lunch at Ichiran Ramen'])).toEqual([
+      'Visit Kinkaku-ji',
+      'Lunch at Ichiran Ramen',
+    ]);
+  });
+
+  it('strips JSON schema fragments the model leaked into the array', () => {
+    // Real case, caught live: a day's "activities" array ended with
+    // ["...", "]", "accommodation", ":", "Stay at a hotel", "cost", ":150"]
+    // - the model lost track of where the array should have closed.
+    expect(
+      coerceStringArray([
+        'Visit Kinkaku-ji',
+        'Lunch at Ichiran Ramen',
+        ']',
+        'accommodation',
+        ':',
+        'Stay at a hotel',
+        'cost',
+        ':150',
+      ]),
+    ).toEqual(['Visit Kinkaku-ji', 'Lunch at Ichiran Ramen', 'Stay at a hotel']);
+  });
+
+  it('does not strip a real activity that merely mentions a schema word in context', () => {
+    // "cost" appearing as a real, meaningful part of a sentence must survive
+    // - only an exact, standalone match to a field name is treated as a leak.
+    expect(coerceStringArray(['Budget-friendly food at low cost'])).toEqual(['Budget-friendly food at low cost']);
+  });
+
+  it('drops empty strings', () => {
+    expect(coerceStringArray(['Visit Kinkaku-ji', '', '   '])).toEqual(['Visit Kinkaku-ji']);
+  });
+
+  it('wraps a single non-leak string', () => {
+    expect(coerceStringArray('Visit Kinkaku-ji')).toEqual(['Visit Kinkaku-ji']);
+  });
+
+  it('returns empty array for a non-array, non-string value', () => {
+    expect(coerceStringArray(undefined)).toEqual([]);
+    expect(coerceStringArray(42)).toEqual([]);
   });
 });

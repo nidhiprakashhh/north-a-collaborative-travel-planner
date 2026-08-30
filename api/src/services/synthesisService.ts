@@ -4,7 +4,7 @@ import { prisma } from '../db/postgres';
 import { Preference } from '../models/Preference';
 import { ItineraryVersion, IItineraryVersion, ConflictEntry } from '../models/ItineraryVersion';
 import { computeVoteTallies } from './voteService';
-import { orderDestinationsGeographically } from './geocodingService';
+import { orderDestinationsGeographically, geocode } from './geocodingService';
 import { getDestinationFacts } from './knowledgeService';
 import { getConsiderIdeas } from './considerService';
 import { HttpError } from '../utils/httpError';
@@ -160,7 +160,7 @@ ${considerList ? `\nIDEAS THE GROUP IS CONSIDERING (not requirements, just thing
 HARD CONSTRAINTS — follow these exactly, they are checked after you respond:
 1. Each day's "cost" and the overall "totalBudget" must stay close to the group's average stated daily budget of $${avgBudget.toFixed(0)} (averaged across ${members.length} member(s)). Do not invent costs far above this — you have no real pricing data, so anchor everything to the stated budget instead of guessing.
 2. Every "Must see" item listed by any member must appear in some day's "activities". If it is truly impossible to include given the dates/destinations, do NOT silently omit it — instead add an entry to "conflictsDetected" explaining why, attributed to that member's exact name.
-3. IDEAS THE GROUP IS CONSIDERING are NOT must-see — use any that reasonably fit, but you may leave any or all of them out with no explanation and no "conflictsDetected" entry. Omitting one of these is never a conflict.
+3. IDEAS THE GROUP IS CONSIDERING are NOT must-see — use any that reasonably fit, but you may leave any or all of them out with no explanation and no "conflictsDetected" entry. Omitting one of these is never a conflict. Each is tagged [CONFIRMED REAL PLACE] (a verified real location — safe to use directly) or [unconfirmed] (no verified location — if you use it, keep it general; do NOT invent specific details like exact activities, ambiance, or a "type" of experience that wasn't actually given to you).
 4. ${
     multiMember
       ? `There are ${members.length} members with potentially differing preferences — "compromisesMade" should explain real trade-offs you made between their specific stated preferences.`
@@ -224,12 +224,48 @@ function coerceNumber(value: unknown): number {
   return 0;
 }
 
-function coerceStringArray(value: unknown): string[] {
+// Rare but observed live: the model occasionally leaks fragments of the
+// JSON schema itself into an array of otherwise-legitimate strings — e.g.
+// "activities" ending up with trailing elements like "]", ":", or literally
+// "accommodation"/"cost" (the field names right after it in the schema),
+// as if it lost track of where the array should have closed. Filters out
+// only things that could never be a real activity/name/compromise anyway
+// (pure punctuation, or an exact match to a JSON field name from this
+// schema) — never touches legitimate content.
+const SCHEMA_LEAK_TOKENS = new Set([
+  'accommodation',
+  'cost',
+  'activities',
+  'destination',
+  'days',
+  'totalbudget',
+  'conflictsdetected',
+  'consensusscore',
+  'compromisesmade',
+  'description',
+  'membernames',
+]);
+
+function isSchemaLeak(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (/^[[\]{}:,]+$/.test(trimmed)) return true;
+  // A bare ":150" or ": 150" - a leaked "cost": 150 fragment with the key
+  // stripped off elsewhere in the same leak. No legitimate activity is ever
+  // just a colon and a number.
+  if (/^:\s*\d+(\.\d+)?$/.test(trimmed)) return true;
+  return SCHEMA_LEAK_TOKENS.has(trimmed.toLowerCase());
+}
+
+// Exported for direct unit testing, same reasoning as fuzzyIncludes below -
+// this is normalizing a real, observed live failure mode, not a
+// hypothetical one.
+export function coerceStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.map((v) => String(v));
+    return value.map((v) => String(v)).filter((v) => !isSchemaLeak(v));
   }
   if (typeof value === 'string') {
-    return [value];
+    return isSchemaLeak(value) ? [] : [value];
   }
   return [];
 }
@@ -458,6 +494,13 @@ async function gatherDestinationFacts(destinations: string[]): Promise<Map<strin
 // any one person's preference. Resolves addedBy separately from
 // gatherPromptData's own user lookup because an idea's author might not
 // have submitted preferences at all.
+const CONSIDER_IDEA_URL_PATTERN = /https?:\/\/\S+/g;
+
+// Attempts to verify each idea against a real place (reusing the same
+// Nominatim geocoding used for destination ordering) and tags it
+// accordingly, rather than passing the group's raw text through unlabeled.
+// Sequential, not Promise.all — see the warning on geocode() itself about
+// why concurrent calls aren't safe with its rate limiter.
 async function gatherConsiderList(tripId: string): Promise<string> {
   const ideas = await getConsiderIdeas(tripId);
   if (ideas.length === 0) return '';
@@ -468,7 +511,30 @@ async function gatherConsiderList(tripId: string): Promise<string> {
   });
   const nameById = new Map(users.map((u) => [u.id, u.name]));
 
-  return ideas.map((i) => `- ${i.name} (added by ${nameById.get(i.addedBy) ?? 'someone'})`).join('\n');
+  const lines: string[] = [];
+  for (const idea of ideas) {
+    const attribution = `added by ${nameById.get(idea.addedBy) ?? 'someone'}`;
+
+    // A URL in the text (e.g. "Ichiran Ramen - https://ichiran.com") isn't
+    // part of the place name — strip it before querying, since feeding a
+    // raw URL to a geocoder is meaningless and would just waste the request.
+    const queryText = idea.name.replace(CONSIDER_IDEA_URL_PATTERN, '').replace(/[-–—]+$/, '').trim();
+
+    const coords = queryText
+      ? await geocode(queryText).catch((err) => {
+          console.warn(`[synthesis] failed to verify consider-idea "${idea.name}"`, err);
+          return null;
+        })
+      : null;
+
+    const status = coords
+      ? 'CONFIRMED REAL PLACE — use it directly, no need to guess details'
+      : 'unconfirmed — no verified location; use the general idea if it fits, do not invent specific details for it';
+
+    lines.push(`- ${idea.name} (${attribution}) [${status}]`);
+  }
+
+  return lines.join('\n');
 }
 
 export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayload> {

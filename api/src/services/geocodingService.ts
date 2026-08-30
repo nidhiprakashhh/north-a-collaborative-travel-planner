@@ -1,4 +1,4 @@
-interface Coordinates {
+export interface Coordinates {
   lat: number;
   lon: number;
 }
@@ -25,7 +25,15 @@ async function throttle(): Promise<void> {
   lastRequestAt = Date.now();
 }
 
-async function geocode(name: string): Promise<Coordinates | null> {
+// Exported so callers outside this file (e.g. verifying a consider-board
+// idea is a real place) can reuse the same cache/rate-limit/timeout
+// handling, rather than re-implementing Nominatim access elsewhere. Callers
+// MUST await this sequentially, not via Promise.all - throttle() below reads
+// and writes the shared `lastRequestAt` non-atomically, so concurrent calls
+// can race past each other and silently break the 1-request/second limit
+// this exists to enforce. Every existing caller in this file already only
+// ever calls it in a sequential for-loop; keep it that way.
+export async function geocode(name: string): Promise<Coordinates | null> {
   const key = name.trim().toLowerCase();
   if (!key) return null;
   if (geocodeCache.has(key)) {
