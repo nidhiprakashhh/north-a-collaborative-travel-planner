@@ -121,6 +121,7 @@ function buildPrompt(
   orderedDestinations: string[] | null,
   destinationFacts: Map<string, string>,
   considerList: string,
+  currentDraft: string | null,
 ): string {
   const avgBudget = averageBudgetPerDay(members);
   const multiMember = members.length > 1;
@@ -156,6 +157,7 @@ VOTING RESULTS:
 ${topDestinations}
 ${factsSection}
 ${considerList ? `\nIDEAS THE GROUP IS CONSIDERING (not requirements, just things people found worth sharing):\n${considerList}\n` : ''}
+${currentDraft ? `\nCURRENT DRAFT (the group's existing itinerary — see constraint 10):\n${currentDraft}\n` : ''}
 
 HARD CONSTRAINTS — follow these exactly, they are checked after you respond:
 1. Each day's "cost" and the overall "totalBudget" must stay close to the group's average stated daily budget of $${avgBudget.toFixed(0)} (averaged across ${members.length} member(s)). Do not invent costs far above this — you have no real pricing data, so anchor everything to the stated budget instead of guessing.
@@ -181,6 +183,11 @@ ${
 ${
     destinationFacts.size > 0
       ? `9. REAL DESTINATION FACTS above are from an actual travel guide, not your own memory — prefer those specific named attractions/activities over inventing alternatives for any destination they cover.`
+      : ''
+  }
+${
+    currentDraft
+      ? `10. A CURRENT DRAFT is provided above — this is a REVISION of the group's existing plan, not a first draft. Keep days, activities, accommodation, and costs that still fit everything else in this prompt; do not reshuffle, rewrite, or swap out things that are still working just for variety. But this cuts both ways: this is not permission to leave the draft untouched by default. If anything in this prompt is not yet reflected in the current draft — a new consider-idea, an updated preference, a new must-see, a changed budget — actually incorporate it where it reasonably fits, even if nothing forces you to. If the current draft conflicts with anything else in this prompt, the rest of this prompt wins — update the draft to match, don't preserve stale details just because they were there before.`
       : ''
   }
 
@@ -537,6 +544,23 @@ async function gatherConsiderList(tripId: string): Promise<string> {
   return lines.join('\n');
 }
 
+// The single most-recent itinerary, formatted as prompt context so
+// "Regenerate" revises the group's existing plan instead of discarding it
+// and generating a fresh one from scratch every time (which is what
+// happened before this — every regenerate was a full reroll, even when
+// only one small thing changed since the last run). Returns null on a
+// trip's first-ever synthesis, when there's nothing yet to revise.
+async function formatCurrentDraft(tripId: string): Promise<string | null> {
+  const latest = await ItineraryVersion.findOne({ tripId }).sort({ version: -1 });
+  if (!latest) return null;
+
+  const days = latest.days
+    .map((d, i) => `Day ${i + 1} (${d.destination}): ${d.activities.join(', ')} — ${d.accommodation}, $${d.cost}`)
+    .join('\n');
+
+  return `Version ${latest.version}, total budget $${latest.totalBudget}, consensus score ${latest.consensusScore}/100:\n${days}`;
+}
+
 export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayload> {
   const { members, topDestinations, expectedDayCount } = await gatherPromptData(tripId);
 
@@ -554,6 +578,10 @@ export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayl
     console.warn('[synthesis] failed to gather consider list, continuing without it', err);
     return '';
   });
+  const currentDraft = await formatCurrentDraft(tripId).catch((err) => {
+    console.warn('[synthesis] failed to load current draft, generating fresh instead', err);
+    return null;
+  });
 
   const prompt = buildPrompt(
     members,
@@ -562,6 +590,7 @@ export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayl
     orderedDestinations,
     destinationFacts,
     considerList,
+    currentDraft,
   );
 
   const parsed = await requestSynthesis(prompt);
