@@ -8,90 +8,73 @@ interface ConsiderBoardProps {
   onRemove: (ideaId: string) => void;
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+
+// Renders a line of typed text with any URL substrings turned into real
+// links, so people can just paste "Ichiran Ramen - https://..." inline
+// instead of filling out a separate link field.
+function renderWithLinks(text: string) {
+  const parts = text.split(URL_PATTERN);
+  return parts.map((part, i) =>
+    URL_PATTERN.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noreferrer" className="underline">
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
 // A shared, visible list everyone in the trip can see and add to live —
 // unlike preferences, this isn't per-member data that only reaches other
-// people indirectly through the synthesized itinerary. Deliberately plain:
-// a post-it color tint on each entry, no rotation or tape — the fuller
-// sticky-note treatment was explicitly more than wanted here.
+// people indirectly through the synthesized itinerary. Styled to read as
+// one open page people are jotting into together (flowing lines, no boxed
+// input/button, no per-entry card chrome) rather than another form next to
+// the preference form — the underlying data is still discrete per-idea
+// documents (no shared-text merge risk), just presented without the form
+// framing.
 export function ConsiderBoard({ ideas, members, onAdd, onRemove }: ConsiderBoardProps) {
-  const [name, setName] = useState('');
-  const [link, setLink] = useState('');
+  const [draft, setDraft] = useState('');
 
   const nameById = new Map(members.map((m) => [m.userId, m.user.name]));
 
-  function handleAdd(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    onAdd(name.trim(), link.trim() || undefined);
-    setName('');
-    setLink('');
+    if (!draft.trim()) return;
+    onAdd(draft.trim());
+    setDraft('');
   }
 
   return (
-    <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
-      <div>
-        <h2 className="text-sm font-semibold text-slate-700">Worth considering</h2>
-        <p className="text-xs text-slate-500">
-          Drop in names or links anyone found — not must-see, just ideas for the group.
-        </p>
-      </div>
+    <div className="rounded-lg bg-amber-50/40 p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-700">Worth considering</h2>
+      <p className="mb-3 text-xs italic text-slate-500">not must-see — just ideas anyone found</p>
 
-      <form onSubmit={handleAdd} className="flex flex-wrap gap-2">
-        <input
-          className="min-w-[10rem] flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-slate-400 focus:outline-none"
-          placeholder="Ichiran Ramen, that café from Instagram..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="min-w-[8rem] flex-1 rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-slate-400 focus:outline-none"
-          placeholder="Link (optional)"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="rounded bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-          disabled={!name.trim()}
-        >
-          Add
-        </button>
-      </form>
-
-      {ideas.length === 0 ? (
-        <p className="text-sm text-slate-400">Nothing added yet.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {ideas.map((idea) => (
-            <li
-              key={idea.id}
-              className="flex items-center justify-between gap-2 rounded bg-amber-50 px-3 py-2 text-sm"
+      <div className="space-y-1.5">
+        {ideas.map((idea) => (
+          <div key={idea.id} className="group flex items-baseline gap-2 py-0.5 text-sm text-slate-800">
+            <span className="min-w-0 flex-1">{renderWithLinks(idea.name)}</span>
+            <span className="shrink-0 text-xs text-slate-400">— {nameById.get(idea.addedBy) ?? 'someone'}</span>
+            <button
+              onClick={() => onRemove(idea.id)}
+              className="shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-slate-500"
+              aria-label={`Remove ${idea.name}`}
             >
-              <div className="min-w-0">
-                <span className="font-medium text-slate-800">{idea.name}</span>
-                {idea.link && (
-                  <a
-                    href={idea.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-2 text-xs text-slate-500 underline"
-                  >
-                    link
-                  </a>
-                )}
-                <div className="text-xs text-slate-500">added by {nameById.get(idea.addedBy) ?? 'someone'}</div>
-              </div>
-              <button
-                onClick={() => onRemove(idea.id)}
-                className="shrink-0 text-slate-400 hover:text-slate-600"
-                aria-label={`Remove ${idea.name}`}
-              >
-                &times;
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+              &times;
+            </button>
+          </div>
+        ))}
+
+        <form onSubmit={handleSubmit}>
+          <input
+            className="w-full border-0 border-b border-transparent bg-transparent py-0.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-300 focus:outline-none"
+            placeholder="Type an idea and press Enter — a place, a link, anything..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+        </form>
+      </div>
     </div>
   );
 }
