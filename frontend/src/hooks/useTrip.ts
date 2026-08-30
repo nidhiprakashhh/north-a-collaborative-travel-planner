@@ -47,6 +47,10 @@ interface UseTripResult {
   sendCursorUpdate: (field: string) => void;
   addConsiderIdea: (name: string, link?: string) => void;
   removeConsiderIdea: (ideaId: string) => void;
+  editItineraryDay: (
+    dayIndex: number,
+    updates: { activities?: string[]; accommodation?: string; cost?: number },
+  ) => void;
 }
 
 // High-level: consumes useSocket, joins/leaves the trip's room, and keeps
@@ -275,6 +279,14 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     [socket, tripId, joined],
   );
 
+  const editItineraryDay = useCallback(
+    (dayIndex: number, updates: { activities?: string[]; accommodation?: string; cost?: number }) => {
+      if (!socket || !tripId || !joined) return;
+      socket.emit('itinerary_edit', { tripId, dayIndex, ...updates });
+    },
+    [socket, tripId, joined],
+  );
+
   return {
     connected,
     joined,
@@ -290,5 +302,6 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     sendCursorUpdate,
     addConsiderIdea,
     removeConsiderIdea,
+    editItineraryDay,
   };
 }

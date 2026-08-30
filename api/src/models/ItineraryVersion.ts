@@ -23,6 +23,12 @@ export interface IItineraryVersion extends Document {
   conflictsDetected: ConflictEntry[];
   consensusScore: number;
   compromisesMade: string[];
+  // Set only when this version was a manual field edit, not an LLM
+  // synthesis run — lets the frontend show "edited by X" vs. an
+  // AI-generated version, and is otherwise inert (synthesisService.ts's
+  // "current draft" read treats the latest version as the draft to revise
+  // regardless of which kind it is, deliberately no special-casing).
+  editedBy?: string;
   createdAt: Date;
 }
 
@@ -53,6 +59,7 @@ const itineraryVersionSchema = new Schema<IItineraryVersion>(
     conflictsDetected: { type: [conflictEntrySchema], default: [] },
     consensusScore: { type: Number, default: 0 },
     compromisesMade: { type: [String], default: [] },
+    editedBy: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

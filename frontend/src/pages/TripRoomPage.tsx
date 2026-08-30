@@ -43,6 +43,7 @@ function TripRoomContent({ tripId }: { tripId: string }) {
     sendCursorUpdate,
     addConsiderIdea,
     removeConsiderIdea,
+    editItineraryDay,
   } = useTrip(tripId, {
     preferences: initialPreferences,
     votes: initialVotes,
@@ -88,8 +89,12 @@ function TripRoomContent({ tripId }: { tripId: string }) {
       <ItineraryView
         itinerary={itinerary}
         isSynthesizing={isSynthesizing}
+        members={trip?.members ?? []}
+        presence={presence}
         onRegenerate={() => synthesize.mutate()}
         regenerateDisabled={Object.keys(preferencesByUser).length === 0}
+        onEditDay={editItineraryDay}
+        onFocusField={sendCursorUpdate}
       />
     </div>
   );

@@ -50,6 +50,14 @@ export interface ConsiderRemovePayload {
   ideaId: string;
 }
 
+export interface ItineraryEditPayload {
+  tripId: string;
+  dayIndex: number;
+  activities?: string[];
+  accommodation?: string;
+  cost?: number;
+}
+
 // ---- Server -> Client payloads ----
 
 export interface PresenceStatePayload {
@@ -104,6 +112,7 @@ export interface ItineraryUpdatedPayload {
   conflictsDetected: ConflictEntry[];
   consensusScore: number;
   compromisesMade: string[];
+  editedBy?: string;
   createdAt: string;
 }
 
@@ -156,4 +165,5 @@ export interface ClientToServerEvents {
   cursor_update: (payload: CursorUpdatePayload) => void;
   consider_add: (payload: ConsiderAddPayload) => void;
   consider_remove: (payload: ConsiderRemovePayload) => void;
+  itinerary_edit: (payload: ItineraryEditPayload) => void;
 }

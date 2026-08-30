@@ -51,6 +51,7 @@ export interface Itinerary {
   conflictsDetected: ConflictEntry[];
   consensusScore: number;
   compromisesMade: string[];
+  editedBy?: string;
   createdAt: string;
 }
 

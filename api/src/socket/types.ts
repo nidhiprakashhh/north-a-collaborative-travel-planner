@@ -131,7 +131,16 @@ export interface ItineraryUpdatedPayload {
   conflictsDetected: ConflictEntryPayload[];
   consensusScore: number;
   compromisesMade: string[];
+  editedBy?: string;
   createdAt: Date;
+}
+
+export interface ItineraryEditPayload {
+  tripId: string;
+  dayIndex: number;
+  activities?: string[];
+  accommodation?: string;
+  cost?: number;
 }
 
 export interface SynthesisStartedPayload {
@@ -155,6 +164,7 @@ export interface ClientToServerEvents {
   cursor_update: (payload: CursorUpdatePayload) => void;
   consider_add: (payload: ConsiderAddPayload) => void;
   consider_remove: (payload: ConsiderRemovePayload) => void;
+  itinerary_edit: (payload: ItineraryEditPayload) => void;
 }
 
 export interface ServerToClientEvents {

@@ -9,6 +9,7 @@ import { registerPreferenceHandlers } from './handlers/preferences';
 import { registerVotingHandlers } from './handlers/voting';
 import { registerCursorHandlers } from './handlers/cursor';
 import { registerConsiderHandlers } from './handlers/consider';
+import { registerItineraryEditHandlers } from './handlers/itineraryEdit';
 import { AppServer } from './types';
 
 export async function initializeSocket(httpServer: HttpServer): Promise<AppServer> {
@@ -47,6 +48,7 @@ export async function initializeSocket(httpServer: HttpServer): Promise<AppServe
     registerVotingHandlers(io, socket);
     registerCursorHandlers(socket);
     registerConsiderHandlers(io, socket);
+    registerItineraryEditHandlers(io, socket);
 
     socket.on('disconnect', () => {
       console.log(`[socket] disconnected: ${socket.id}`);

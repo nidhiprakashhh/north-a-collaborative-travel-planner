@@ -53,6 +53,7 @@ export interface ItineraryPayload {
   conflictsDetected: ConflictEntry[];
   consensusScore: number;
   compromisesMade: string[];
+  editedBy?: string;
   createdAt: Date;
 }
 
@@ -436,6 +437,7 @@ function toPayload(doc: IItineraryVersion): ItineraryPayload {
     conflictsDetected: doc.conflictsDetected,
     consensusScore: doc.consensusScore,
     compromisesMade: doc.compromisesMade,
+    editedBy: doc.editedBy,
     createdAt: doc.createdAt,
   };
 }
@@ -629,4 +631,60 @@ export async function synthesizeItinerary(tripId: string): Promise<ItineraryPayl
 export async function getLatestItinerary(tripId: string): Promise<ItineraryPayload | null> {
   const latest = await ItineraryVersion.findOne({ tripId }).sort({ version: -1 });
   return latest ? toPayload(latest) : null;
+}
+
+export interface ItineraryDayEdit {
+  activities?: string[];
+  accommodation?: string;
+  cost?: number;
+}
+
+// A manual edit to one day of the current itinerary — creates a new version
+// (same append-only history as an LLM synthesis run) with just that day's
+// fields changed and everything else carried over unchanged. Deliberately
+// tagged with editedBy but otherwise treated identically to an LLM version:
+// the next Regenerate's "current draft" read (see formatCurrentDraft) just
+// picks up whatever the latest version is, source-agnostic, so a manual
+// edit gets the same revise-not-reroll protection any other stable part of
+// the plan already gets.
+export async function editItineraryDay(
+  tripId: string,
+  userId: string,
+  dayIndex: number,
+  updates: ItineraryDayEdit,
+): Promise<ItineraryPayload> {
+  const latest = await ItineraryVersion.findOne({ tripId }).sort({ version: -1 });
+  if (!latest) {
+    throw new HttpError(400, 'No itinerary exists yet for this trip — generate one before editing it');
+  }
+  if (dayIndex < 0 || dayIndex >= latest.days.length) {
+    throw new HttpError(400, `Day ${dayIndex + 1} does not exist in the current itinerary`);
+  }
+  if (updates.activities === undefined && updates.accommodation === undefined && updates.cost === undefined) {
+    throw new HttpError(400, 'Nothing to update — provide activities, accommodation, or cost');
+  }
+
+  const days = latest.days.map((day, i) =>
+    i === dayIndex
+      ? {
+          destination: day.destination,
+          activities: updates.activities ?? day.activities,
+          accommodation: updates.accommodation ?? day.accommodation,
+          cost: updates.cost ?? day.cost,
+        }
+      : day,
+  );
+
+  const edited = await ItineraryVersion.create({
+    tripId,
+    version: latest.version + 1,
+    days,
+    totalBudget: latest.totalBudget,
+    conflictsDetected: latest.conflictsDetected,
+    consensusScore: latest.consensusScore,
+    compromisesMade: latest.compromisesMade,
+    editedBy: userId,
+  });
+
+  return toPayload(edited);
 }
