@@ -16,8 +16,6 @@ interface EnvConfig {
   mongoUri: string;
   redisUrl: string;
   corsOrigin: string;
-  groqApiKey: string;
-  groqModel: string;
 }
 
 function required(name: string): string {
@@ -37,7 +35,7 @@ export const env: EnvConfig = {
   mongoUri: required('MONGO_URI'),
   redisUrl: required('REDIS_URL'),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
-  // Optional for now — the LLM synthesis step is a later phase.
-  groqApiKey: process.env.GROQ_API_KEY ?? '',
-  groqModel: process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant',
+  // GROQ_API_KEY / GROQ_MODEL are read by the Go synthesis worker (see
+  // /worker), not this process — this process no longer talks to Groq
+  // directly, so it has no need to hold the API key at all.
 };

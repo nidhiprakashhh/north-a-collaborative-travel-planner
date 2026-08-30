@@ -1,5 +1,3 @@
-import Groq from 'groq-sdk';
-import { env } from '../config/env';
 import { prisma } from '../db/postgres';
 import { Preference } from '../models/Preference';
 import { ItineraryVersion, IItineraryVersion, ConflictEntry } from '../models/ItineraryVersion';
@@ -7,9 +5,8 @@ import { computeVoteTallies } from './voteService';
 import { orderDestinationsGeographically, geocode } from './geocodingService';
 import { getDestinationFacts } from './knowledgeService';
 import { getConsiderIdeas } from './considerService';
+import { requestSynthesisFromWorker } from './synthesisQueue';
 import { HttpError } from '../utils/httpError';
-
-const groq = new Groq({ apiKey: env.groqApiKey });
 
 interface MemberPromptData {
   userId: string;
@@ -442,43 +439,16 @@ function toPayload(doc: IItineraryVersion): ItineraryPayload {
   };
 }
 
-const MAX_GENERATION_ATTEMPTS = 3;
-
-// A small (8B) model doing structured JSON generation occasionally produces
-// invalid JSON outright (e.g. writing "150 * 9 = 1350" as a value instead of
-// the number) — Groq's json_object mode catches this itself and returns a
-// 400 rather than passing broken JSON through, but it's still a transient
-// generation failure worth retrying rather than failing the whole request.
+// The actual Groq call — including retrying transient failures like
+// timeouts, rate limits, or outright invalid JSON (a small model doing
+// structured JSON generation occasionally writes something like
+// "150 * 9 = 1350" where a number was expected) — now happens in the Go
+// synthesis worker (see /worker), not this process. This just hands the
+// prompt off and waits for the worker's result; see synthesisQueue.ts for
+// the handoff itself.
 async function requestSynthesis(prompt: string): Promise<RawSynthesisResult> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    try {
-      const completion = await groq.chat.completions.create({
-        model: env.groqModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      });
-
-      const content = completion.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('LLM returned an empty response');
-      }
-
-      return extractJson(content) as RawSynthesisResult;
-    } catch (err) {
-      lastError = err;
-      console.warn(`[synthesis] generation attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed`, err);
-    }
-  }
-
-  throw new HttpError(
-    502,
-    `LLM failed to produce a valid itinerary after ${MAX_GENERATION_ATTEMPTS} attempts: ${
-      lastError instanceof Error ? lastError.message : 'unknown error'
-    }`,
-  );
+  const content = await requestSynthesisFromWorker(prompt);
+  return extractJson(content) as RawSynthesisResult;
 }
 
 // Real facts (not the model's own memory) for each destination, from a real

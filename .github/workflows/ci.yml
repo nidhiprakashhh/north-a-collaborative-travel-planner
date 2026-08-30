@@ -60,6 +60,24 @@ jobs:
       - run: npx prisma migrate deploy
       - run: npm test
 
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache-dependency-path: worker/go.sum
+      - run: go build ./...
+      - run: go vet ./...
+      - run: gofmt -l . | (! grep .)
+      # groq_test.go stubs the Groq endpoint with httptest — no real network
+      # calls, no API key needed here.
+      - run: go test ./... -v
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
