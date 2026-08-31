@@ -10,6 +10,7 @@ import {
   getVotes,
   getItinerary,
   getConsiderList,
+  getCosts,
 } from '../controllers/tripController';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.post('/:id/join', join);
 router.get('/:id/preferences', getPreferences);
 router.get('/:id/votes', getVotes);
 router.get('/:id/consider', getConsiderList);
+router.get('/:id/costs', getCosts);
 router.get('/:id/itinerary', getItinerary);
 router.post('/:id/synthesize', synthesize);
 

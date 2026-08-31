@@ -1,7 +1,7 @@
 // Hand-kept mirror of api/src/socket/types.ts. Keep in sync manually when
 // the backend's event contracts change — see the note in types/api.ts for
 // why this isn't a shared package.
-import type { ItineraryDay, ConflictEntry } from './api';
+import type { ItineraryDay, ConflictEntry, CostCategory } from './api';
 
 export interface PresenceUser {
   userId: string;
@@ -56,6 +56,18 @@ export interface ItineraryEditPayload {
   activities?: string[];
   accommodation?: string;
   cost?: number;
+}
+
+export interface CostAddPayload {
+  tripId: string;
+  label: string;
+  amount: number;
+  category?: CostCategory;
+}
+
+export interface CostRemovePayload {
+  tripId: string;
+  itemId: string;
 }
 
 // ---- Server -> Client payloads ----
@@ -138,6 +150,25 @@ export interface ConsiderRemovedPayload {
   ideaId: string;
 }
 
+export interface CostItemPayload {
+  id: string;
+  label: string;
+  amount: number;
+  category: CostCategory;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface CostAddedPayload {
+  tripId: string;
+  item: CostItemPayload;
+}
+
+export interface CostRemovedPayload {
+  tripId: string;
+  itemId: string;
+}
+
 export interface ServerToClientEvents {
   presence_state: (payload: PresenceStatePayload) => void;
   user_joined: (payload: UserJoinedPayload) => void;
@@ -149,6 +180,8 @@ export interface ServerToClientEvents {
   itinerary_updated: (payload: ItineraryUpdatedPayload) => void;
   consider_added: (payload: ConsiderAddedPayload) => void;
   consider_removed: (payload: ConsiderRemovedPayload) => void;
+  cost_added: (payload: CostAddedPayload) => void;
+  cost_removed: (payload: CostRemovedPayload) => void;
   error_message: (payload: ErrorPayload) => void;
 }
 
@@ -166,4 +199,6 @@ export interface ClientToServerEvents {
   consider_add: (payload: ConsiderAddPayload) => void;
   consider_remove: (payload: ConsiderRemovePayload) => void;
   itinerary_edit: (payload: ItineraryEditPayload) => void;
+  cost_add: (payload: CostAddPayload) => void;
+  cost_remove: (payload: CostRemovePayload) => void;
 }

@@ -33,6 +33,10 @@ model's guesses.
 - **Manual itinerary editing.** Any member can hand-edit a day's activities, accommodation, or
   cost directly. Edits are versioned the same way a synthesis run is, so the next regenerate
   treats a manual edit as part of the current draft to revise, not something to overwrite.
+- **Real trip costs, live.** The itinerary's per-day cost is still just the LLM's estimate, so
+  members log actual costs (a booked flight, a paid deposit) as their own shared, categorized
+  list, with a real summed total shown separately and clearly labeled as the actual number,
+  not a guess.
 
 ## Architecture
 
@@ -105,3 +109,5 @@ static Go binary, about 18MB, rather than a full runtime image.
   and independent scaling (5 tests)
 - Tests for the synthesis pipeline itself: prompt construction, guardrails, and revise-in-place
   (47 tests)
+- A shared, live-synced trip-costs board, so the real logged total sits next to (never in
+  place of) the itinerary's LLM-estimated one

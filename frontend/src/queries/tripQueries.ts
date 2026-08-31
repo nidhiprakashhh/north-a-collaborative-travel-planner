@@ -87,3 +87,12 @@ export function useInitialConsiderList(tripId: string | undefined) {
     enabled: isAuthenticated && Boolean(tripId),
   });
 }
+
+export function useInitialCosts(tripId: string | undefined) {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ['trips', tripId, 'costs'],
+    queryFn: () => tripsApi.getCosts(tripId!),
+    enabled: isAuthenticated && Boolean(tripId),
+  });
+}

@@ -7,12 +7,14 @@ import {
   useInitialVotes,
   useInitialItinerary,
   useInitialConsiderList,
+  useInitialCosts,
   useSynthesize,
 } from '../queries/tripQueries';
 import { MemberPresence } from '../components/MemberPresence';
 import { PreferenceForm } from '../components/PreferenceForm';
 import { VotingPanel } from '../components/VotingPanel';
 import { ConsiderBoard } from '../components/ConsiderBoard';
+import { CostBoard } from '../components/CostBoard';
 import { ItineraryView } from '../components/ItineraryView';
 import { ConflictBanner } from '../components/ConflictBanner';
 
@@ -26,6 +28,7 @@ function TripRoomContent({ tripId }: { tripId: string }) {
   const { data: initialVotes } = useInitialVotes(tripId);
   const { data: initialItinerary } = useInitialItinerary(tripId);
   const { data: initialConsiderList } = useInitialConsiderList(tripId);
+  const { data: initialCosts } = useInitialCosts(tripId);
   const synthesize = useSynthesize(tripId);
 
   const {
@@ -36,6 +39,8 @@ function TripRoomContent({ tripId }: { tripId: string }) {
     voteTallies,
     itinerary,
     considerList,
+    costItems,
+    costTotal,
     isSynthesizing,
     lastError,
     sendPreferenceUpdate,
@@ -43,12 +48,15 @@ function TripRoomContent({ tripId }: { tripId: string }) {
     sendCursorUpdate,
     addConsiderIdea,
     removeConsiderIdea,
+    addCostItem,
+    removeCostItem,
     editItineraryDay,
   } = useTrip(tripId, {
     preferences: initialPreferences,
     votes: initialVotes,
     itinerary: initialItinerary,
     considerList: initialConsiderList,
+    costItems: initialCosts?.items,
   });
 
   const myPreference = user ? preferencesByUser[user.id] : undefined;
@@ -95,6 +103,14 @@ function TripRoomContent({ tripId }: { tripId: string }) {
         regenerateDisabled={Object.keys(preferencesByUser).length === 0}
         onEditDay={editItineraryDay}
         onFocusField={sendCursorUpdate}
+      />
+
+      <CostBoard
+        items={costItems}
+        total={costTotal}
+        members={trip?.members ?? []}
+        onAdd={addCostItem}
+        onRemove={removeCostItem}
       />
     </div>
   );

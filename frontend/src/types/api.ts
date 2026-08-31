@@ -79,3 +79,19 @@ export interface ConsiderIdeaDTO {
   addedBy: string;
   createdAt: string;
 }
+
+export type CostCategory = 'flight' | 'lodging' | 'food' | 'activity' | 'transport' | 'other';
+
+export interface CostItemDTO {
+  id: string;
+  label: string;
+  amount: number;
+  category: CostCategory;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface CostsResponse {
+  items: CostItemDTO[];
+  total: number;
+}

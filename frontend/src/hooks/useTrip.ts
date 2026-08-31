@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from './useSocket';
-import type { Itinerary, TripPreferencesMap, VoteTallies, ConsiderIdeaDTO } from '../types/api';
+import type { Itinerary, TripPreferencesMap, VoteTallies, ConsiderIdeaDTO, CostItemDTO, CostCategory } from '../types/api';
 import type {
   PresenceUser,
   PreferenceUpdatePayload,
@@ -11,6 +11,8 @@ import type {
   ItineraryUpdatedPayload,
   ConsiderAddedPayload,
   ConsiderRemovedPayload,
+  CostAddedPayload,
+  CostRemovedPayload,
   ErrorPayload,
 } from '../types/socket';
 
@@ -30,6 +32,8 @@ export interface InitialTripState {
   votes?: VoteTallies;
   itinerary?: Itinerary | null;
   considerList?: ConsiderIdeaDTO[];
+  costItems?: CostItemDTO[];
+  costTotal?: number;
 }
 
 interface UseTripResult {
@@ -40,6 +44,8 @@ interface UseTripResult {
   voteTallies: Record<string, number>;
   itinerary: ItineraryUpdatedPayload | null;
   considerList: ConsiderIdeaDTO[];
+  costItems: CostItemDTO[];
+  costTotal: number;
   isSynthesizing: boolean;
   lastError: string | null;
   sendPreferenceUpdate: (updates: Omit<PreferenceUpdatePayload, 'tripId'>) => void;
@@ -47,6 +53,8 @@ interface UseTripResult {
   sendCursorUpdate: (field: string) => void;
   addConsiderIdea: (name: string, link?: string) => void;
   removeConsiderIdea: (ideaId: string) => void;
+  addCostItem: (label: string, amount: number, category?: CostCategory) => void;
+  removeCostItem: (itemId: string) => void;
   editItineraryDay: (
     dayIndex: number,
     updates: { activities?: string[]; accommodation?: string; cost?: number },
@@ -69,6 +77,7 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
   const [voteTallies, setVoteTallies] = useState<Record<string, number>>({});
   const [itinerary, setItinerary] = useState<ItineraryUpdatedPayload | null>(null);
   const [considerList, setConsiderList] = useState<ConsiderIdeaDTO[]>([]);
+  const [costItems, setCostItems] = useState<CostItemDTO[]>([]);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
@@ -81,6 +90,7 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
   const seededVotesRef = useRef<string | undefined>(undefined);
   const seededItineraryRef = useRef<string | undefined>(undefined);
   const seededConsiderRef = useRef<string | undefined>(undefined);
+  const seededCostsRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!tripId || !initial?.preferences || seededPreferencesRef.current === tripId) {
@@ -126,6 +136,14 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     seededConsiderRef.current = tripId;
     setConsiderList((prev) => (prev.length > 0 ? prev : initial.considerList!));
   }, [tripId, initial?.considerList]);
+
+  useEffect(() => {
+    if (!tripId || !initial?.costItems || seededCostsRef.current === tripId) {
+      return;
+    }
+    seededCostsRef.current = tripId;
+    setCostItems((prev) => (prev.length > 0 ? prev : initial.costItems!));
+  }, [tripId, initial?.costItems]);
 
   useEffect(() => {
     if (!socket || !connected || !tripId) {
@@ -195,6 +213,14 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       if (payload.tripId !== tripId) return;
       setConsiderList((prev) => prev.filter((i) => i.id !== payload.ideaId));
     };
+    const handleCostAdded = (payload: CostAddedPayload) => {
+      if (payload.tripId !== tripId) return;
+      setCostItems((prev) => [...prev, payload.item]);
+    };
+    const handleCostRemoved = (payload: CostRemovedPayload) => {
+      if (payload.tripId !== tripId) return;
+      setCostItems((prev) => prev.filter((i) => i.id !== payload.itemId));
+    };
     const handleErrorMessage = (payload: ErrorPayload) => {
       setLastError(payload.message);
       setIsSynthesizing(false);
@@ -210,6 +236,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     socket.on('itinerary_updated', handleItineraryUpdated);
     socket.on('consider_added', handleConsiderAdded);
     socket.on('consider_removed', handleConsiderRemoved);
+    socket.on('cost_added', handleCostAdded);
+    socket.on('cost_removed', handleCostRemoved);
     socket.on('error_message', handleErrorMessage);
 
     return () => {
@@ -225,6 +253,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       socket.off('itinerary_updated', handleItineraryUpdated);
       socket.off('consider_added', handleConsiderAdded);
       socket.off('consider_removed', handleConsiderRemoved);
+      socket.off('cost_added', handleCostAdded);
+      socket.off('cost_removed', handleCostRemoved);
       socket.off('error_message', handleErrorMessage);
 
       // Reset so switching to a different trip doesn't show stale data.
@@ -234,6 +264,7 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
       setVoteTallies({});
       setItinerary(null);
       setConsiderList([]);
+      setCostItems([]);
       setIsSynthesizing(false);
       setLastError(null);
     };
@@ -279,6 +310,22 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     [socket, tripId, joined],
   );
 
+  const addCostItem = useCallback(
+    (label: string, amount: number, category?: CostCategory) => {
+      if (!socket || !tripId || !joined) return;
+      socket.emit('cost_add', { tripId, label, amount, category });
+    },
+    [socket, tripId, joined],
+  );
+
+  const removeCostItem = useCallback(
+    (itemId: string) => {
+      if (!socket || !tripId || !joined) return;
+      socket.emit('cost_remove', { tripId, itemId });
+    },
+    [socket, tripId, joined],
+  );
+
   const editItineraryDay = useCallback(
     (dayIndex: number, updates: { activities?: string[]; accommodation?: string; cost?: number }) => {
       if (!socket || !tripId || !joined) return;
@@ -295,6 +342,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     voteTallies,
     itinerary,
     considerList,
+    costItems,
+    costTotal: costItems.reduce((sum, item) => sum + item.amount, 0),
     isSynthesizing,
     lastError,
     sendPreferenceUpdate,
@@ -302,6 +351,8 @@ export function useTrip(tripId: string | undefined, initial?: InitialTripState):
     sendCursorUpdate,
     addConsiderIdea,
     removeConsiderIdea,
+    addCostItem,
+    removeCostItem,
     editItineraryDay,
   };
 }

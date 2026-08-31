@@ -1,5 +1,5 @@
 import { apiRequest } from '../lib/apiClient';
-import type { Trip, Itinerary, TripPreferencesMap, VoteTallies, ConsiderIdeaDTO } from '../types/api';
+import type { Trip, Itinerary, TripPreferencesMap, VoteTallies, ConsiderIdeaDTO, CostsResponse } from '../types/api';
 
 export function listTrips(): Promise<Trip[]> {
   return apiRequest<Trip[]>('/api/trips');
@@ -38,4 +38,8 @@ export function getItinerary(tripId: string): Promise<Itinerary | null> {
 
 export function getConsiderList(tripId: string): Promise<ConsiderIdeaDTO[]> {
   return apiRequest<ConsiderIdeaDTO[]>(`/api/trips/${tripId}/consider`);
+}
+
+export function getCosts(tripId: string): Promise<CostsResponse> {
+  return apiRequest<CostsResponse>(`/api/trips/${tripId}/costs`);
 }

@@ -4,6 +4,7 @@ import { synthesizeItinerary, getLatestItinerary } from '../services/synthesisSe
 import { getTripPreferences } from '../services/preferenceService';
 import { computeVoteTallies } from '../services/voteService';
 import { getConsiderIdeas } from '../services/considerService';
+import { getCostItems, getCostTotal } from '../services/costService';
 import { HttpError } from '../utils/httpError';
 import { AppServer } from '../socket/types';
 
@@ -83,6 +84,16 @@ export async function getConsiderList(req: Request, res: Response): Promise<void
     res.status(200).json(ideas);
   } catch (err) {
     handleError(err, res, 'Failed to fetch consider list');
+  }
+}
+
+export async function getCosts(req: Request, res: Response): Promise<void> {
+  try {
+    await getTripById(req.userId!, req.params.id);
+    const [items, total] = await Promise.all([getCostItems(req.params.id), getCostTotal(req.params.id)]);
+    res.status(200).json({ items, total });
+  } catch (err) {
+    handleError(err, res, 'Failed to fetch costs');
   }
 }
 
