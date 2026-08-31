@@ -8,7 +8,7 @@ import { getConsiderIdeas } from './considerService';
 import { requestSynthesisFromWorker } from './synthesisQueue';
 import { HttpError } from '../utils/httpError';
 
-interface MemberPromptData {
+export interface MemberPromptData {
   userId: string;
   name: string;
   availableDates: string[];
@@ -112,7 +112,12 @@ function averageBudgetPerDay(members: MemberPromptData[]): number {
   return members.reduce((sum, m) => sum + m.budgetPerDay, 0) / members.length;
 }
 
-function buildPrompt(
+// Exported for direct unit testing — buildPrompt is where every synthesis
+// constraint (budget anchoring, must-see enforcement, revise-in-place, etc)
+// actually gets phrased, so its conditional sections are worth pinning down
+// directly rather than only exercising them indirectly through a full,
+// non-deterministic LLM run.
+export function buildPrompt(
   members: MemberPromptData[],
   topDestinations: string,
   expectedDayCount: number | null,
@@ -199,9 +204,10 @@ Return a JSON object with:
 Respond with valid JSON only. Every numeric field must be a plain number, never an object broken down by person.`;
 }
 
+// Exported for direct unit testing.
 // Groq's JSON mode usually returns clean JSON, but this strips a ```json
 // fence defensively in case the model wraps its answer in a code block anyway.
-function extractJson(raw: string): unknown {
+export function extractJson(raw: string): unknown {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   return JSON.parse(fenced ? fenced[1].trim() : trimmed);
@@ -211,7 +217,8 @@ function extractJson(raw: string): unknown {
 // a per-member breakdown object (e.g. { Alice: 150, Bob: 100 }) instead —
 // this averages such an object into a single number rather than crashing
 // Mongoose's Number cast.
-function coerceNumber(value: unknown): number {
+// Exported for direct unit testing.
+export function coerceNumber(value: unknown): number {
   if (typeof value === 'number' && !Number.isNaN(value)) {
     return value;
   }
@@ -275,10 +282,11 @@ export function coerceStringArray(value: unknown): string[] {
   return [];
 }
 
+// Exported for direct unit testing.
 // The model is asked to name members exactly, but treat that loosely
 // (case/whitespace-insensitive) rather than dropping a conflict entirely
 // over a formatting mismatch.
-function coerceConflicts(value: unknown, nameToUserId: Map<string, string>): ConflictEntry[] {
+export function coerceConflicts(value: unknown, nameToUserId: Map<string, string>): ConflictEntry[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -364,10 +372,14 @@ export function fuzzyIncludes(haystack: string, needle: string): boolean {
   return false;
 }
 
+// Exported for direct unit testing — this is the layer that catches what the
+// model gets wrong on its own (budget blowouts, day-count mismatches,
+// unfulfilled must-sees), so it's worth pinning down directly rather than
+// only exercising it indirectly through a full, non-deterministic LLM run.
 // Deterministic checks that don't rely on the model having followed the
 // prompt's constraints — small models often don't. These run after parsing
 // and augment (never remove) the model's own output.
-function applyGuardrails(
+export function applyGuardrails(
   draft: {
     days: ItineraryDayPayload[];
     totalBudget: number;
@@ -516,13 +528,18 @@ async function gatherConsiderList(tripId: string): Promise<string> {
   return lines.join('\n');
 }
 
+// Exported for direct unit testing against a real Mongo test DB — this is
+// the read half of revise-in-place (see buildPrompt's constraint 10), and
+// the first version of that constraint had a real bug (the model left the
+// draft untouched even when it should have incorporated something new), so
+// this pipeline is worth pinning down with tests, not just manual runs.
 // The single most-recent itinerary, formatted as prompt context so
 // "Regenerate" revises the group's existing plan instead of discarding it
 // and generating a fresh one from scratch every time (which is what
 // happened before this — every regenerate was a full reroll, even when
 // only one small thing changed since the last run). Returns null on a
 // trip's first-ever synthesis, when there's nothing yet to revise.
-async function formatCurrentDraft(tripId: string): Promise<string | null> {
+export async function formatCurrentDraft(tripId: string): Promise<string | null> {
   const latest = await ItineraryVersion.findOne({ tripId }).sort({ version: -1 });
   if (!latest) return null;
 

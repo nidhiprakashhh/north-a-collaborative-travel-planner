@@ -44,7 +44,7 @@ model's guesses.
 | LLM execution | Go worker (a goroutine pool over a Redis job queue) | The Groq call is isolated behind its own bounded-concurrency, retryable service that scales and deploys independently of the request-serving API, with its own timeout and backoff handling. The API builds the prompt and applies all the itinerary-domain guardrails; the worker's only job is running that prompt against Groq reliably. |
 | LLM | Groq (`openai/gpt-oss-120b`) | Fast inference; its output is treated as untrusted and validated/coerced, never passed straight through |
 | Frontend | React 19 + TypeScript + Vite + React Query | Socket-driven live state, REST for the initial page load |
-| Testing | Vitest for the API, against real Postgres/Mongo/Redis rather than mocks, plus Go's own `testing` package for the worker | 34 API tests and 5 worker tests, run in CI on every push |
+| Testing | Vitest for the API, against real Postgres/Mongo/Redis rather than mocks, plus Go's own `testing` package for the worker | 81 API tests and 5 worker tests, run in CI on every push |
 | Deployment | Docker Compose on a single EC2 instance, nginx in front (TLS via Let's Encrypt, rate limiting, reverse proxy) | Self-hosted and free-tier-sized, no managed services required |
 
 ## Repo layout
@@ -95,7 +95,7 @@ static Go binary, about 18MB, rather than a full runtime image.
 - CI, running typecheck, lint, and tests on every push, including the Go worker
 - httpOnly JWT cookie for auth
 - Redis-backed Socket.io adapter for horizontal scaling of the real-time layer
-- Tests for auth, trip CRUD, and voting (34 tests)
+- Tests for auth, trip CRUD, and voting (22 tests)
 - Wikivoyage-grounded destination facts
 - A shared "worth considering" idea board with geocoding-verified place tagging
 - Revise-in-place regeneration, so regenerating revises the existing plan instead of rerolling
@@ -103,3 +103,5 @@ static Go binary, about 18MB, rather than a full runtime image.
 - Manual itinerary editing with live edit presence
 - Itinerary synthesis extracted into a dedicated Go worker, with bounded concurrency, retries,
   and independent scaling (5 tests)
+- Tests for the synthesis pipeline itself: prompt construction, guardrails, and revise-in-place
+  (47 tests)
