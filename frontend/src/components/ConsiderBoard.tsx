@@ -17,7 +17,7 @@ function renderWithLinks(text: string) {
   const parts = text.split(URL_PATTERN);
   return parts.map((part, i) =>
     URL_PATTERN.test(part) ? (
-      <a key={i} href={part} target="_blank" rel="noreferrer" className="underline">
+      <a key={i} href={part} target="_blank" rel="noreferrer" className="text-sky underline">
         {part}
       </a>
     ) : (
@@ -26,7 +26,7 @@ function renderWithLinks(text: string) {
   );
 }
 
-// A shared, visible list everyone in the trip can see and add to live —
+// A shared, visible list everyone in the trip can see and add to live,
 // unlike preferences, this isn't per-member data that only reaches other
 // people indirectly through the synthesized itinerary. Styled to read as
 // one open page people are jotting into together (flowing lines, no boxed
@@ -47,18 +47,18 @@ export function ConsiderBoard({ ideas, members, onAdd, onRemove }: ConsiderBoard
   }
 
   return (
-    <div className="rounded-lg bg-amber-50/40 p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-700">Worth considering</h2>
-      <p className="mb-3 text-xs italic text-slate-500">not must-see — just ideas anyone found</p>
+    <div className="rounded-xl bg-white p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-ink">Worth considering</h2>
+      <p className="mb-3 text-xs italic text-ink-soft">not must-see, just ideas anyone found</p>
 
       <div className="space-y-1.5">
         {ideas.map((idea) => (
-          <div key={idea.id} className="group flex items-baseline gap-2 py-0.5 text-sm text-slate-800">
+          <div key={idea.id} className="group flex items-baseline gap-2 py-0.5 text-sm text-ink">
             <span className="min-w-0 flex-1">{renderWithLinks(idea.name)}</span>
-            <span className="shrink-0 text-xs text-slate-400">— {nameById.get(idea.addedBy) ?? 'someone'}</span>
+            <span className="shrink-0 text-xs text-ink-faint">&middot; {nameById.get(idea.addedBy) ?? 'someone'}</span>
             <button
               onClick={() => onRemove(idea.id)}
-              className="shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-slate-500"
+              className="shrink-0 text-ink-faint opacity-0 transition group-hover:opacity-100 hover:text-sky"
               aria-label={`Remove ${idea.name}`}
             >
               &times;
@@ -68,8 +68,8 @@ export function ConsiderBoard({ ideas, members, onAdd, onRemove }: ConsiderBoard
 
         <form onSubmit={handleSubmit}>
           <input
-            className="w-full border-0 border-b border-transparent bg-transparent py-0.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-300 focus:outline-none"
-            placeholder="Type an idea and press Enter — a place, a link, anything..."
+            className="w-full border-0 border-b border-transparent bg-transparent py-0.5 text-sm text-ink placeholder:text-ink-faint focus:border-sky focus:outline-none"
+            placeholder="Type an idea and press Enter, a place, a link, anything..."
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />

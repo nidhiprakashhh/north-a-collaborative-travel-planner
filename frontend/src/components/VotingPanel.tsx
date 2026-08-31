@@ -29,15 +29,15 @@ export function VotingPanel({ preferencesByUser, voteTallies, onCastVote }: Voti
 
   if (candidates.length === 0) {
     return (
-      <div className="rounded-lg bg-white p-4 text-sm text-slate-500 shadow-sm">
-        No destinations proposed yet — add some in your preferences to start voting.
+      <div className="rounded-xl bg-white p-4 text-sm text-ink-soft shadow-sm">
+        No destinations proposed yet, add some in your preferences to start voting.
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 rounded-lg bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-700">Vote on destinations</h2>
+    <div className="space-y-2 rounded-xl bg-white p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-ink">Vote on destinations</h2>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {candidates.map((destination) => {
           const isMine = myVote === destination;
@@ -45,12 +45,12 @@ export function VotingPanel({ preferencesByUser, voteTallies, onCastVote }: Voti
             <button
               key={destination}
               onClick={() => handleVote(destination)}
-              className={`rounded-lg border p-3 text-left transition ${
-                isMine ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 hover:border-slate-400'
+              className={`rounded-lg border p-4 text-left transition ${
+                isMine ? 'border-sky bg-sky text-white' : 'border-haze-200 hover:border-sky'
               }`}
             >
               <div className="font-medium">{destination}</div>
-              <div className={`text-xs ${isMine ? 'text-slate-300' : 'text-slate-500'}`}>
+              <div className={`text-xs ${isMine ? 'text-white/80' : 'text-ink-soft'}`}>
                 {voteTallies[destination] ?? 0} vote{(voteTallies[destination] ?? 0) === 1 ? '' : 's'}
               </div>
             </button>

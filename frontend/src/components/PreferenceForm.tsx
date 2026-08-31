@@ -16,17 +16,22 @@ interface PreferenceFormProps {
 
 interface FormState {
   destinations: string;
-  availableDates: string;
+  dateFrom: string;
+  dateTo: string;
   budgetPerDay: string;
   activityTypes: string;
   mustSee: string;
   dealbreakers: string;
 }
 
+// availableDates has always meant a [from, to] range (see synthesisService's
+// day-count math), it just used to be typed in as free text - this reads
+// that same two-element shape back out for the date pickers below.
 function toFormState(pref: TripPreferenceState | undefined): FormState {
   return {
     destinations: pref?.destinations.join(', ') ?? '',
-    availableDates: pref?.availableDates.join(', ') ?? '',
+    dateFrom: pref?.availableDates[0] ?? '',
+    dateTo: pref?.availableDates[1] ?? '',
     budgetPerDay: pref ? String(pref.budgetPerDay) : '',
     activityTypes: pref?.activityTypes.join(', ') ?? '',
     mustSee: pref?.mustSee.join(', ') ?? '',
@@ -56,7 +61,7 @@ export function PreferenceForm({ initial, onSubmit, onFocusField }: PreferenceFo
     debounceRef.current = setTimeout(() => {
       onSubmit({
         destinations: splitList(next.destinations),
-        availableDates: splitList(next.availableDates),
+        availableDates: [next.dateFrom, next.dateTo].filter(Boolean),
         budgetPerDay: Number(next.budgetPerDay) || 0,
         activityTypes: splitList(next.activityTypes),
         mustSee: splitList(next.mustSee),
@@ -78,22 +83,62 @@ export function PreferenceForm({ initial, onSubmit, onFocusField }: PreferenceFo
     scheduleSubmit(next);
   }
 
-  const fields: Array<{ key: keyof FormState; label: string; placeholder: string }> = [
+  const listFields: Array<{ key: keyof FormState; label: string; placeholder: string }> = [
     { key: 'destinations', label: 'Destinations', placeholder: 'Tokyo, Kyoto' },
-    { key: 'availableDates', label: 'Available dates', placeholder: '2026-09-01, 2026-09-10' },
     { key: 'activityTypes', label: 'Activities', placeholder: 'food, hiking, nightlife' },
     { key: 'mustSee', label: 'Must see', placeholder: 'Fushimi Inari' },
     { key: 'dealbreakers', label: 'Dealbreakers', placeholder: 'no early mornings' },
   ];
 
+  const inputClass =
+    'w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none';
+
   return (
-    <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-700">Your preferences</h2>
-      {fields.map(({ key, label, placeholder }) => (
-        <div key={key}>
-          <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+    <div className="space-y-3 rounded-xl bg-white p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-ink">Your preferences</h2>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-ink-soft">Destinations</label>
+        <input
+          className={inputClass}
+          value={form.destinations}
+          placeholder={listFields[0].placeholder}
+          onFocus={() => onFocusField('destinations')}
+          onChange={(e) => update('destinations', e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-ink-soft">Available dates</label>
+        {/* min-w-0 overrides flex items' default min-width:auto — a date
+            input's intrinsic content width (dd/mm/yyyy + the calendar icon)
+            won't shrink below that on its own, so without this it overflows
+            the card instead of sharing the row with its sibling. */}
+        <div className="flex items-center gap-1.5">
           <input
-            className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-slate-400 focus:outline-none"
+            type="date"
+            className={`min-w-0 flex-1 ${inputClass}`}
+            value={form.dateFrom}
+            onFocus={() => onFocusField('availableDates')}
+            onChange={(e) => update('dateFrom', e.target.value)}
+          />
+          <span className="shrink-0 text-xs text-ink-faint">to</span>
+          <input
+            type="date"
+            className={`min-w-0 flex-1 ${inputClass}`}
+            value={form.dateTo}
+            min={form.dateFrom || undefined}
+            onFocus={() => onFocusField('availableDates')}
+            onChange={(e) => update('dateTo', e.target.value)}
+          />
+        </div>
+      </div>
+
+      {listFields.slice(1).map(({ key, label, placeholder }) => (
+        <div key={key}>
+          <label className="mb-1 block text-sm font-medium text-ink-soft">{label}</label>
+          <input
+            className={inputClass}
             value={form[key]}
             placeholder={placeholder}
             onFocus={() => onFocusField(key)}
@@ -101,11 +146,12 @@ export function PreferenceForm({ initial, onSubmit, onFocusField }: PreferenceFo
           />
         </div>
       ))}
+
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-500">Budget per day (USD)</label>
+        <label className="mb-1 block text-sm font-medium text-ink-soft">Budget per day (USD)</label>
         <input
           type="number"
-          className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm focus:border-slate-400 focus:outline-none"
+          className={inputClass}
           value={form.budgetPerDay}
           onFocus={() => onFocusField('budgetPerDay')}
           onChange={(e) => update('budgetPerDay', e.target.value)}

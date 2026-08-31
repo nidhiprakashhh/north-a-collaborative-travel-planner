@@ -45,19 +45,21 @@ export function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-800">North</h1>
-        <div className="flex gap-2 text-sm">
+    <div className="flex min-h-screen items-center justify-center bg-sun">
+      <div className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6 shadow-sm">
+        <h1 className="font-display text-2xl font-semibold text-ink">
+          North<span className="text-sky">.</span>
+        </h1>
+        <div className="flex gap-3 text-sm">
           <button
-            className={mode === 'login' ? 'font-semibold text-slate-800' : 'text-slate-400'}
+            className={mode === 'login' ? 'font-semibold text-ink' : 'text-ink-faint'}
             onClick={() => setMode('login')}
           >
             Log in
           </button>
-          <span className="text-slate-300">/</span>
+          <span className="text-haze-200">/</span>
           <button
-            className={mode === 'register' ? 'font-semibold text-slate-800' : 'text-slate-400'}
+            className={mode === 'register' ? 'font-semibold text-ink' : 'text-ink-faint'}
             onClick={() => setMode('register')}
           >
             Register
@@ -67,7 +69,7 @@ export function AuthPage() {
         <form className="space-y-3" onSubmit={handleSubmit}>
           {mode === 'register' && (
             <input
-              className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-haze-200 bg-white px-3 py-2 text-sm focus:border-sky focus:outline-none"
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -75,7 +77,7 @@ export function AuthPage() {
             />
           )}
           <input
-            className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-haze-200 bg-white px-3 py-2 text-sm focus:border-sky focus:outline-none"
             type="email"
             placeholder="Email"
             value={email}
@@ -83,7 +85,7 @@ export function AuthPage() {
             required
           />
           <input
-            className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-haze-200 bg-white px-3 py-2 text-sm focus:border-sky focus:outline-none"
             type="password"
             placeholder="Password"
             value={password}
@@ -96,14 +98,14 @@ export function AuthPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded bg-slate-800 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="w-full rounded-lg bg-sky py-2 text-sm font-medium text-white transition hover:bg-sky-dark disabled:opacity-40"
           >
             {mode === 'login' ? 'Log in' : 'Create account'}
           </button>
         </form>
 
-        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-          <p className="font-medium text-slate-700">Just want to look around?</p>
+        <div className="rounded-lg border border-haze-200 bg-white p-3 text-xs text-ink-soft">
+          <p className="font-medium text-ink">Just want to look around?</p>
           <p className="mt-1">
             Demo account: <span className="font-mono">demo@example.com</span> /{' '}
             <span className="font-mono">NorthDemo2026</span>
@@ -112,7 +114,7 @@ export function AuthPage() {
             type="button"
             onClick={handleDemoLogin}
             disabled={submitting}
-            className="mt-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+            className="mt-2 rounded-lg border border-haze-200 bg-white px-2 py-1 text-xs font-medium text-ink-soft transition hover:border-sky hover:text-sky disabled:opacity-40"
           >
             Log in as demo
           </button>

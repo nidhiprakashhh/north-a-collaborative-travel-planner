@@ -4,5 +4,7 @@
 
 body {
   margin: 0;
-  background-color: #f8fafc;
+  background-color: #e2f6ca;
+  color: #406093;
+  font-family: 'Work Sans', system-ui, sans-serif;
 }

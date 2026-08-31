@@ -50,12 +50,12 @@ export function TripsListPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-800">Your trips</h1>
-        <div className="flex items-center gap-3 text-sm text-slate-500">
+        <h1 className="font-display text-2xl font-semibold text-ink">Your trips</h1>
+        <div className="flex items-center gap-3 text-sm text-ink-soft">
           <span>{user?.name}</span>
-          <button onClick={logout} className="text-slate-400 underline">
+          <button onClick={logout} className="text-ink-faint underline hover:text-sky">
             Log out
           </button>
         </div>
@@ -64,30 +64,35 @@ export function TripsListPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <form onSubmit={handleCreate} className="space-y-2 rounded-lg bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Create a trip</h2>
+        <form onSubmit={handleCreate} className="space-y-2 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-ink">Create a trip</h2>
           <input
-            className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none"
             placeholder="Trip name"
             value={newTripName}
             onChange={(e) => setNewTripName(e.target.value)}
             required
           />
           <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">Start date</label>
+            {/* min-w-0 overrides flex items' default min-width:auto — without
+                it, a date input's intrinsic content width (its internal
+                dd/mm/yyyy fields + calendar icon) refuses to shrink below
+                that size, so it overflows flex-1's w-full instead of
+                respecting it. */}
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block text-sm font-medium text-ink-soft">Start date</label>
               <input
                 type="date"
-                className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none"
                 value={newTripStartDate}
                 onChange={(e) => setNewTripStartDate(e.target.value)}
               />
             </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">End date</label>
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block text-sm font-medium text-ink-soft">End date</label>
               <input
                 type="date"
-                className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                className="w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none"
                 value={newTripEndDate}
                 min={newTripStartDate || undefined}
                 onChange={(e) => setNewTripEndDate(e.target.value)}
@@ -97,23 +102,23 @@ export function TripsListPage() {
           <button
             type="submit"
             disabled={createTrip.isPending}
-            className="rounded bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-sky px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-dark disabled:opacity-40"
           >
             Create
           </button>
         </form>
 
-        <form onSubmit={handleJoin} className="space-y-2 rounded-lg bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Join a trip</h2>
+        <form onSubmit={handleJoin} className="space-y-2 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-ink">Join a trip</h2>
           <input
-            className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none"
             placeholder="Trip ID"
             value={joinTripId}
             onChange={(e) => setJoinTripId(e.target.value)}
             required
           />
           <input
-            className="w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-haze-200 bg-white px-2 py-1.5 text-sm focus:border-sky focus:outline-none"
             placeholder="Invite code"
             value={joinInviteCode}
             onChange={(e) => setJoinInviteCode(e.target.value.toUpperCase())}
@@ -122,7 +127,7 @@ export function TripsListPage() {
           <button
             type="submit"
             disabled={joinTrip.isPending}
-            className="rounded bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-sky px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-dark disabled:opacity-40"
           >
             Join
           </button>
@@ -130,16 +135,16 @@ export function TripsListPage() {
       </div>
 
       <div className="space-y-2">
-        {isLoading && <p className="text-sm text-slate-500">Loading...</p>}
-        {trips?.length === 0 && <p className="text-sm text-slate-500">No trips yet — create one above.</p>}
+        {isLoading && <p className="text-sm text-ink-soft">Loading...</p>}
+        {trips?.length === 0 && <p className="text-sm text-ink-soft">No trips yet, create one above.</p>}
         {trips?.map((trip) => (
           <button
             key={trip.id}
             onClick={() => navigate(`/trips/${trip.id}`)}
-            className="block w-full rounded-lg bg-white p-4 text-left shadow-sm hover:bg-slate-50"
+            className="block w-full rounded-xl bg-white p-4 text-left shadow-sm transition hover:shadow-md"
           >
-            <div className="font-medium text-slate-800">{trip.name}</div>
-            <div className="text-xs text-slate-500">
+            <div className="font-display text-base font-semibold text-ink">{trip.name}</div>
+            <div className="text-xs text-ink-soft">
               {trip.members.length} member{trip.members.length === 1 ? '' : 's'} &middot; invite code{' '}
               {trip.inviteCode}
             </div>

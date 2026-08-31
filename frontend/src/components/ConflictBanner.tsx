@@ -18,15 +18,18 @@ export function ConflictBanner({ itinerary, members }: ConflictBannerProps) {
   const nameById = new Map(members.map((m) => [m.userId, m.user.name]));
 
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">Conflicts detected</div>
-      <ul className="mt-1 list-inside list-disc text-sm text-amber-800">
+    // White, not the sunshine wash — the page background is now a warm
+    // yellow too, so a sunshine-soft card would nearly disappear into it.
+    // The thick sunshine border carries the "this is a warning" signal.
+    <div className="rounded-xl border-2 border-sunshine bg-white p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-sunshine">Conflicts detected</div>
+      <ul className="mt-1 list-inside list-disc text-sm text-ink">
         {itinerary.conflictsDetected.map((c, i) => {
           const names = c.memberIds.map((id) => nameById.get(id)).filter(Boolean);
           return (
             <li key={i}>
               {c.description}
-              {names.length > 0 && <span className="text-amber-600"> (affects: {names.join(', ')})</span>}
+              {names.length > 0 && <span className="text-ink-soft"> (affects: {names.join(', ')})</span>}
             </li>
           );
         })}

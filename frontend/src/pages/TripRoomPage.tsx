@@ -62,16 +62,16 @@ function TripRoomContent({ tripId }: { tripId: string }) {
   const myPreference = user ? preferencesByUser[user.id] : undefined;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
+    <div className="mx-auto max-w-5xl space-y-5 p-8">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/trips" className="text-xs text-slate-400 underline">
+          <Link to="/trips" className="text-xs text-ink-faint underline hover:text-sky">
             &larr; All trips
           </Link>
-          <h1 className="text-lg font-semibold text-slate-800">{trip?.name ?? 'Trip'}</h1>
-          {trip && <p className="text-xs text-slate-500">Invite code: {trip.inviteCode}</p>}
+          <h1 className="font-display text-2xl font-semibold text-ink">{trip?.name ?? 'Trip'}</h1>
+          {trip && <p className="text-xs text-ink-soft">Invite code: {trip.inviteCode}</p>}
         </div>
-        <span className={`text-xs ${joined ? 'text-green-600' : 'text-slate-400'}`}>
+        <span className={`text-xs ${joined ? 'text-grass' : 'text-ink-faint'}`}>
           {joined ? 'connected' : connected ? 'joining trip...' : 'connecting...'}
         </span>
       </div>
@@ -82,7 +82,7 @@ function TripRoomContent({ tripId }: { tripId: string }) {
 
       <ConflictBanner itinerary={itinerary} members={trip?.members ?? []} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <PreferenceForm initial={myPreference} onSubmit={sendPreferenceUpdate} onFocusField={sendCursorUpdate} />
         <VotingPanel preferencesByUser={preferencesByUser} voteTallies={voteTallies} onCastVote={castVote} />
       </div>

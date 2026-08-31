@@ -67,13 +67,15 @@ export function ItineraryView({
     return presence.filter((p) => p.editingField === field).map((p) => p.name);
   }
 
+  const inputClass = 'rounded-lg border border-haze-200 bg-white px-2 py-1 text-sm focus:border-sky focus:outline-none';
+
   return (
-    <div className="space-y-3 rounded-lg bg-white p-4 shadow-sm">
+    <div className="space-y-3 rounded-xl bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">
+        <h2 className="font-display text-base font-semibold text-ink">
           Itinerary{' '}
           {itinerary && (
-            <span className="font-normal text-slate-400">
+            <span className="font-sans text-sm font-normal text-ink-faint">
               (v{itinerary.version}
               {itinerary.editedBy && `, edited by ${nameById.get(itinerary.editedBy) ?? 'someone'}`})
             </span>
@@ -82,34 +84,34 @@ export function ItineraryView({
         <button
           onClick={onRegenerate}
           disabled={isSynthesizing || regenerateDisabled}
-          className="rounded bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+          className="rounded-lg bg-sky px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-dark disabled:opacity-40"
         >
           {isSynthesizing ? 'Synthesizing...' : 'Regenerate'}
         </button>
       </div>
 
       {isSynthesizing && (
-        <div className="flex items-center gap-2 rounded bg-slate-50 p-3 text-sm text-slate-500">
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+        <div className="flex items-center gap-2 rounded-lg bg-white p-4 text-sm text-ink-soft">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-haze-200 border-t-sky" />
           Synthesizing an itinerary from everyone's preferences...
         </div>
       )}
 
       {!isSynthesizing && !itinerary && (
-        <p className="text-sm text-slate-500">
-          No itinerary yet — submit preferences and votes, one will generate automatically a few seconds after the
+        <p className="text-sm text-ink-soft">
+          No itinerary yet, submit preferences and votes, one will generate automatically a few seconds after the
           last edit.
         </p>
       )}
 
       {!isSynthesizing && itinerary && (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+          <div className="flex flex-wrap gap-4 text-sm text-ink-soft">
             <span>
-              Total budget: <strong>${itinerary.totalBudget}</strong>
+              Total budget: <strong className="text-ink">${itinerary.totalBudget}</strong>
             </span>
             <span>
-              Consensus score: <strong>{itinerary.consensusScore}/100</strong>
+              Consensus score: <strong className="text-ink">{itinerary.consensusScore}/100</strong>
             </span>
           </div>
 
@@ -119,38 +121,38 @@ export function ItineraryView({
               const isEditingThis = editingDay === i;
 
               return (
-                <li key={i} className="rounded border border-slate-100 p-3">
+                <li key={i} className="rounded-lg border border-haze-200 p-4">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Day {i + 1}</div>
+                    <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">Day {i + 1}</div>
                     {!isEditingThis && (
                       <button
                         onClick={() => startEdit(i)}
-                        className="text-xs text-slate-400 underline hover:text-slate-600"
+                        className="text-xs text-ink-faint underline hover:text-sky"
                       >
                         Edit
                       </button>
                     )}
                   </div>
-                  <div className="font-medium">{day.destination}</div>
+                  <div className="font-medium text-ink">{day.destination}</div>
 
                   {isEditingThis ? (
                     <div className="mt-1 space-y-1.5">
                       <input
-                        className="w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-slate-400 focus:outline-none"
+                        className={`w-full ${inputClass}`}
                         value={draft.activities}
                         onChange={(e) => setDraft({ ...draft, activities: e.target.value })}
                         placeholder="Activities, comma-separated"
                       />
                       <div className="flex gap-1.5">
                         <input
-                          className="min-w-0 flex-[2] rounded border border-slate-200 px-2 py-1 text-sm focus:border-slate-400 focus:outline-none"
+                          className={`min-w-0 flex-[2] ${inputClass}`}
                           value={draft.accommodation}
                           onChange={(e) => setDraft({ ...draft, accommodation: e.target.value })}
                           placeholder="Accommodation"
                         />
                         <input
                           type="number"
-                          className="w-20 rounded border border-slate-200 px-2 py-1 text-sm focus:border-slate-400 focus:outline-none"
+                          className={`w-20 ${inputClass}`}
                           value={draft.cost}
                           onChange={(e) => setDraft({ ...draft, cost: e.target.value })}
                           placeholder="Cost"
@@ -159,26 +161,26 @@ export function ItineraryView({
                       <div className="flex gap-2">
                         <button
                           onClick={() => saveEdit(i)}
-                          className="rounded bg-slate-800 px-2.5 py-1 text-xs font-medium text-white"
+                          className="rounded-lg bg-sky px-2.5 py-1 text-xs font-medium text-white transition hover:bg-sky-dark"
                         >
                           Save
                         </button>
-                        <button onClick={cancelEdit} className="text-xs text-slate-400 hover:text-slate-600">
+                        <button onClick={cancelEdit} className="text-xs text-ink-faint hover:text-ink">
                           Cancel
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-sm text-slate-600">{day.activities.join(', ')}</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-sm text-ink-soft">{day.activities.join(', ')}</div>
+                      <div className="text-xs text-ink-faint">
                         {day.accommodation} &middot; ${day.cost}
                       </div>
                     </>
                   )}
 
                   {editors.length > 0 && !isEditingThis && (
-                    <div className="mt-1 text-xs italic text-slate-400">
+                    <div className="mt-1 text-xs italic text-sky">
                       {editors.join(', ')} {editors.length === 1 ? 'is' : 'are'} editing this day...
                     </div>
                   )}
@@ -189,8 +191,8 @@ export function ItineraryView({
 
           {itinerary.compromisesMade.length > 0 && (
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Compromises made</div>
-              <ul className="list-inside list-disc text-sm text-slate-600">
+              <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">Compromises made</div>
+              <ul className="list-inside list-disc text-sm text-ink-soft">
                 {itinerary.compromisesMade.map((c, i) => (
                   <li key={i}>{c}</li>
                 ))}
